@@ -106,7 +106,7 @@ tables = {
     ]],
     'TB_310' : ['tb24_310_ipc_cpc', [
         'ipr_seq',
-        # 'applicant_no', 특허고객번호
+        'applicant_no', #특허고객번호
         'appl_no', # 출원번호
         'ipc_seq',
         'ipc_cpc',
@@ -115,7 +115,8 @@ tables = {
     'TB_320' : ['tb24_320_priority', [
         'priority_seq',
         'ipr_seq',
-        'applicant_no',
+        'applicant_no', # 특허고객번호
+        'appl_no', # 출원번호
         'priority_nation',
         'priority_no',
         'priority_date',
@@ -152,7 +153,7 @@ tables = {
     ]],
     'TB_410' : ['tb24_410_ipc_cpc', [
         'ipr_seq',
-        # 'applicant_no',
+        'applicant_no', # 특허고객번호
         'appl_no', # 출원번호
         'ipc_seq',
         'ipc_cpc',
@@ -161,7 +162,8 @@ tables = {
     'TB_420' : ['tb24_420_priority', [
         'priority_seq',
         'ipr_seq',
-        'applicant_no',
+        'applicant_no', # 특허고객번호
+        'appl_no', # 출원번호
         'priority_nation',
         'priority_no',
         'priority_date',
