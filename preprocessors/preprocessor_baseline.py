@@ -114,6 +114,7 @@ class DataParser():
         temp.pop('priority_date')
         if len(priority_data) > 0:
             priority_data['applicant_no'] = temp['applicant_no']
+            priority_data['appl_no'] = temp['appl_no']
             self.priority_data_list.append(priority_data)
 
 
