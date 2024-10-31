@@ -5,14 +5,38 @@ main.py
 import os
 
 from dotenv import load_dotenv
+import asyncio
+
 
 from config.config import tables
 # from collectors.api_call import KiprisAPI
 from db.mysql_loader import Database
 from preprocessors.preprocessor_baseline import DataParser
-from collectors.api_patent import PatentDownloader
-from collectors.api_design import DesignDownloader
-from collectors.api_trademark import TrademarkDownloader
+# from collectors.api_patent import PatentDownloader
+# from collectors.api_design import DesignDownloader
+# from collectors.api_trademark import TrademarkDownloader
+from collectors.api_patent import AsyncPatentDownloader
+from collectors.api_trademark import AsyncTrademarkDownloader
+from collectors.api_design import AsyncDesignDownloader
+from collectors.api_patent2 import AsyncPatentDownloader2
+from collectors.api_trademark2 import AsyncTrademarkDownloader2
+from collectors.api_design2 import AsyncDesignDownloader2
+
+
+async def collect_data():
+    downloader1 = AsyncDesignDownloader()
+    await downloader1.process_all()
+    downloader2 = AsyncPatentDownloader()
+    await downloader2.process_all()
+    downloader3 = AsyncTrademarkDownloader()
+    await downloader3.process_all()
+    downloader4 = AsyncDesignDownloader2()
+    await downloader4.process_all()
+    downloader5 = AsyncPatentDownloader2()
+    await downloader5.process_all()
+    downloader6 = AsyncTrademarkDownloader2()
+    await downloader6.process_all()
+
 
 def main():
     '''
@@ -52,9 +76,8 @@ def main():
     # kipris.api_call('univ', 'trademark')
 
     # try:
-    PatentDownloader().process_all()
-    DesignDownloader().process_all()
-    TrademarkDownloader().process_all()
+    asyncio.run(collect_data())
+    
         
     # except Exception as e:
     #     logging.error(f"Application failed: {e}")
