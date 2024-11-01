@@ -1,3 +1,6 @@
+이 코드는 Kipris Plus API에서 가져온 XML 파일을 파싱하여 데이터베이스에 저장하기 전에 전처리하는 DataParser 클래스입니다. 파일 경로와 날짜를 입력받아 XML 데이터를 읽고, 해당 데이터의 주요 정보를 추출하여 특정 형식에 맞게 가공한 후 리스트 형태로 반환합니다. 주요 함수별로 다양한 데이터 타입에 맞춘 파싱과 필터링을 수행하여 ipr_reg_data_list, ipc_cpc_data_list, priority_data_list라는 리스트에 데이터를 저장합니다.
+
+
 # project_patent
 이어드림 기업 연계 프로젝트 - 준소프트웨어 2팀
 
