@@ -14,16 +14,13 @@ class DataParser():
 
     def __init__(self, path, date=None):
         self.path = path
-        self.ipr_reg_data_list = []
-        self.ipc_cpc_data_list = []
-        self.priority_data_list = []
         
         if date is not None and is_yymmdd_format(date):
             self.date = date
         else:
             self.date = get_today_yymmdd()
         
-    def xml_to_list(self, data_class='corp'):
+    def xml_to_list(self, data_class):
         '''
         기업, 대학 | 특허/실용신안, 디자인, 상표 xml파일을 읽어서 데이터를 리턴
         input : data_service : patent_utility (특허/실용신안)
@@ -32,23 +29,24 @@ class DataParser():
                 data_class : corp (기업)
                              univ (대학)
         '''
+        self.ipr_reg_data_list = []
+        self.ipc_cpc_data_list = []
+        self.priority_data_list = []
 
-        self.ipr_reg_parser(data_service='patent_utility',  data_class=data_class)
-        self.ipr_reg_parser(data_service='design', data_class=data_class)
-        self.ipr_reg_parser(data_service='trademark', data_class=data_class)
+        self.ipr_reg_parser(data_class, data_service='patent_utility')
+        self.ipr_reg_parser(data_class, data_service='design')
+        self.ipr_reg_parser(data_class, data_service='trademark')
 
         return self.ipr_reg_data_list, self.ipc_cpc_data_list, self.priority_data_list
 
 
-    def ipr_reg_parser(self, data_service, data_class):
+    def ipr_reg_parser(self, data_class, data_service):
         '''
         data_service에 해당하는 파라미터에 맞춰서 클래스 변수에 저장합니다.
         서브 테이블인 ipc_code, priority 함수를 호출해서 함께 저장합니다.
         input : data_service : patent_utility (특허/실용신안)
                                design (디자인)
                                trademark (상표)
-                data_class : corp (기업)
-                             univ (대학)
         '''
         path = f'{self.path}/{self.date}_{data_service}_{data_class}.xml'
         # try:
@@ -84,7 +82,7 @@ class DataParser():
         for code in ipc_codes:
             self.ipc_cpc_data_list.append({
                 'appl_no' : temp['appl_no'], 
-                'ipc_cpc' : code[0],
+                'ipc_cpc' : 'ipc', # 추후 ipc, cpc 구분 필요
                 'ipc_cpc_code' : code
             })
 
