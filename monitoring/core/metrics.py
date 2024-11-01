@@ -1,4 +1,5 @@
-# core/metrics.py
+# monitoring/core/metrics.py
+
 from typing import Dict, Any
 from prometheus_client import Counter, Summary, Gauge, Histogram
 from dataclasses import dataclass
@@ -9,14 +10,23 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MetricConfig:
-    enabled: bool = True
-    prefix: str = ""
-    labels: tuple = ()
-    buckets: tuple = (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0)
+    """메트릭 설정을 위한 구성 데이터 클래스"""
+    enabled: bool = True  # 메트릭 사용 여부
+    prefix: str = ""  # 메트릭 이름 앞에 붙일 접두사
+    labels: tuple = ()  # 메트릭에 추가할 라벨
+    buckets: tuple = (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0)  # 히스토그램 버킷 설정
 
 class IPRMetrics:
     """통합 IP Rights 메트릭 클래스"""
+    
     def __init__(self, service_name: str, config: MetricConfig = None):
+        """
+        IPRMetrics 클래스 초기화 메서드
+
+        Parameters:
+            service_name (str): 서비스 이름으로 메트릭의 접두사로 사용됨.
+            config (MetricConfig): MetricConfig 인스턴스로 메트릭 구성 설정.
+        """
         if not service_name:
             raise ValidationError(
                 "Service name cannot be empty",
@@ -26,10 +36,11 @@ class IPRMetrics:
             )
         self.service_name = service_name
         self.config = config or MetricConfig()
-        self._setup_metrics()
+        self._setup_metrics()  # 메트릭을 설정하는 내부 메서드 호출
         logger.info(f"Initialized metrics for service: {service_name}")
     
     def _setup_metrics(self):
+        """서비스 메트릭 설정"""
         try:
             prefix = f"{self.service_name}_"
             
