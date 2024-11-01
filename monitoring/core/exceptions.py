@@ -1,4 +1,5 @@
 # core/exceptions.py
+from typing import Any, Dict, Optional
 
 class MonitoringError(Exception):
     """모니터링 과정에서 발생하는 일반적인 예외"""
