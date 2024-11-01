@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 from MySQLdb import OperationalError, connect
 
+
 load_dotenv()
 
 class Database:
@@ -194,32 +195,52 @@ class Database:
             self.close()
 
     def upsert_data(self,
-                    data_type: str,
-                    table_metadata: list[str, list[str]],
+                    org_type: int,
+                    data_type: int,
+                    table_to_load: list[str, list[str]],
                     dataset: list[dict],
                     ):
         """데이터를 데이터베이스에 삽입하거나 업데이트합니다.
 
         Args:
-            data_type (str): 데이터 타입. 'ipr', 'pri', 'ipc' 중 하나여야 함
-            table_metadata (list[str, list[str]]): [테이블명, 컬럼목록]을 포함하는 리스트
+            org_type (int): 기관 타입 코드
+                - 0: 기업
+                - 1: 대학
+            data_type (int): 데이터 타입 코드
+                - 0: 산업재산권 데이터
+                - 1: IPC/CPC 분류 데이터
+                - 2: 우선권 데이터
+            table_to_load (list[str, list[str]]): [테이블명, 컬럼목록]을 포함하는 리스트
             dataset (list[dict]): 삽입 또는 업데이트할 데이터 리스트
 
-        데이터 타입별 동작:
-            - 'ipr': 특허 정보 데이터
-                - survey_year, survey_month, write_time, modify_time, legal_status_desc,
-                  appl_no, applicant_no를 제외한 모든 필드 업데이트
-                - legal_status_desc는 값이 다를 경우에만 업데이트
-            - 'pri': 우선권 데이터
-                - ipr_seq를 제외한 모든 필드 업데이트
-                - priority_nation은 값이 다를 경우에만 업데이트
-            - 'ipc': IPC 분류 데이터
-                - ipr_seq, ipc_seq, applicant_no를 제외한 모든 필드 업데이트
+        Returns:
+            None
+
+        데이터 타입별 처리 규칙:
+            산업재산권 데이터 (data_type=0):
+                - 다음 필드는 업데이트하지 않음:
+                    survey_year, survey_month, write_time, modify_time,
+                    legal_status_desc, appl_no, applicant_no
+                - legal_status_desc는 값이 다른 경우에만 업데이트
+            
+            우선권 데이터 (data_type=1):
+                - ipr_seq는 기존 산업재산권 테이블에서 조회하여 자동 설정
+                - priority_nation은 값이 다른 경우에만 업데이트
+                - 그 외 필드는 모두 업데이트 가능
+            
+            IPC/CPC 분류 데이터 (data_type=2):
+                - ipr_seq는 기존 산업재산권 테이블에서 조회하여 자동 설정
+                - 다음 필드는 업데이트하지 않음:
+                    ipr_seq, ipc_seq, applicant_no
+                - 그 외 필드는 모두 업데이트 가능
 
         동작 방식:
-            1. 주어진 데이터가 기존에 없으면 새로 삽입
-            2. 기존 데이터가 있으면 지정된 규칙에 따라 업데이트
-            3. 모든 데이터는 자동으로 SQL 인젝션 방지를 위한 이스케이프 처리됨
+            1. 데이터베이스에 연결
+            2. 각 데이터에 대해:
+                - 데이터가 존재하지 않으면 새로 삽입
+                - 데이터가 존재하면 데이터 타입별 규칙에 따라 업데이트
+            3. 모든 처리가 성공하면 변경사항 커밋
+            4. 오류 발생 시 롤백
 
         Raises:
             OperationalError: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생 시
@@ -228,7 +249,7 @@ class Database:
         try:
             self.connect()
             cursor = self.connection.cursor()
-            table_name = table_metadata[0]
+            table_name = table_to_load[0]
 
             for data in dataset:
                 columns = ', '.join(data.keys())
@@ -237,34 +258,70 @@ class Database:
 
                 update_clauses = []
 
-                if data_type == 'ipr':
+                if data_type == 0:
                     for column in data.keys():
-                        if column not in ['survey_year', 'survey_month', 'write_time', 'modify_time', 'legal_status_desc', 'appl_no', 'applicant_no']:
+                        if column not in [
+                            'survey_year', 
+                            'survey_month', 
+                            'write_time', 
+                            'modify_time', 
+                            'legal_status_desc', 
+                            'appl_no', 
+                            'applicant_no',
+                            ]:
                             update_clauses.append(f"{column} = VALUES({column})")
                         elif column == 'legal_status_desc':
                             update_clauses.append(
                                 f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({column}) ELSE {column} END"
                                 )
-
-                elif data_type == 'pri':
+                
+                elif data_type == 1:
+                    columns = columns.removesuffix(', appl_no')
                     for column in data.keys():
-                        if column not in ['ipr_seq']:
+                        if column not in [
+                            'ipr_seq', 
+                            'ipc_seq', 
+                            'applicant_no',
+                            'appl_no',
+                            ]:
+                            update_clauses.append(f"{column} = VALUES({column})")
+                    
+                    # ipr_seq 컬럼 추가
+                    values.append(data['appl_no'])
+                    columns = columns + ', ipr_seq'
+                    if org_type == 0:
+                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
+                    elif org_type == 1:
+                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
+
+                elif data_type == 2:
+                    columns = columns.removesuffix(', appl_no')
+                    placeholders = placeholders.removesuffix(', %s')
+                    for column in data.keys():
+                        if column not in [
+                            'ipr_seq',
+                            'appl_no'
+                            ]:
                             update_clauses.append(f"{column} = VALUES({column})")
                         elif column == 'priority_nation':
                             update_clauses.append(
                                 f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({column}) ELSE {column} END"
                                 )
-
-                elif data_type == 'ipc':
-                    for column in data.keys():
-                        if column not in ['ipr_seq', 'ipc_seq', 'applicant_no']:
-                            update_clauses.append(f"{column} = VALUES({column})")
-
+                        
+                    # ipr_seq 컬럼 추가
+                    columns = columns + ', ipr_seq'
+                    if org_type == 0:
+                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
+                    elif org_type == 1:
+                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
+                        
                 else:
                     print('\n정의되지 않은 data type입니다.')
                     return
 
                 update_query = ', '.join(update_clauses)
+
+                print(values)
 
                 query = f"""
                 INSERT INTO {self.db_name}.{table_name} ({columns})
@@ -272,12 +329,41 @@ class Database:
                 ON DUPLICATE KEY UPDATE
                 {update_query};
                 """
+                print(query)
                 cursor.execute(query, values)
 
             self.connection.commit()
         except OperationalError as e:
             print(f"Error: {e}")
             self.connection.rollback()
+        finally:
+            if cursor:
+                cursor.close()
+            self.close()
+
+    def fetch_corp_numbers(self) -> list[str]:
+        """
+        tb24_100_bizinfo 테이블에서 모든 corp_no 값을 조회합니다.
+
+        Returns:
+            list[str]: 조회된 corp_no 리스트
+            None: 오류 발생 시
+
+        Raises:
+            OperationalError: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생 시
+        """
+        cursor = None
+        try:
+            self.connect()
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT corp_no FROM tb24_100_bizinfo")
+            rows = cursor.fetchall()
+
+            return rows
+        
+        except OperationalError as e:
+            print(f"기업번호 조회 실패: {str(e)}")
+            return None
         finally:
             if cursor:
                 cursor.close()
