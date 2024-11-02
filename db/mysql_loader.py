@@ -19,6 +19,7 @@ from MySQLdb import OperationalError, connect
 
 load_dotenv()
 
+
 class Database:
     """MySQL 데이터베이스 연결 및 쿼리 실행을 관리하는 클래스.
 
@@ -57,7 +58,7 @@ class Database:
                 password=self.password,
                 database=self.db_name
             )
-    
+
     def close(self):
         """데이터베이스 연결을 종료합니다.
 
@@ -129,7 +130,9 @@ class Database:
         try:
             self.connect()
             cursor = self.connection.cursor()
-            cursor.execute(f"SELECT applicant_no, biz_no FROM {table_metadata[0]}")
+            cursor.execute(
+                f"SELECT applicant_no, biz_no FROM {table_metadata[0]}"
+            )
             rows = cursor.fetchall()
 
             biz_no_dict = {}
@@ -179,12 +182,13 @@ class Database:
             for data in dataset:
                 columns = ', '.join(data.keys())
                 placeholders = ', '.join(['%s'] * len(data))
-                query = f"INSERT INTO {self.db_name}.{table_metadata[0]} ({columns}) VALUES ({placeholders})"
-                
+                query = f"INSERT INTO {self.db_name}.{
+                    table_metadata[0]}({columns}) VALUES({placeholders})"
+
                 # dict의 values를 리스트로 변환하여 파라미터로 전달
                 values = list(data.values())
                 cursor.execute(query, values)
-            
+
             return self.connection.commit()
         except OperationalError as e:
             print(f"쿼리 실행 실패: {str(e)}")
@@ -196,7 +200,7 @@ class Database:
 
     def upsert_data(self,
                     org_type: int,
-                    data_type: int,
+                    service_type: int,
                     table_to_load: list[str, list[str]],
                     dataset: list[dict],
                     ):
@@ -222,12 +226,12 @@ class Database:
                     survey_year, survey_month, write_time, modify_time,
                     legal_status_desc, appl_no, applicant_no
                 - legal_status_desc는 값이 다른 경우에만 업데이트
-            
+
             우선권 데이터 (data_type=1):
                 - ipr_seq는 기존 산업재산권 테이블에서 조회하여 자동 설정
                 - priority_nation은 값이 다른 경우에만 업데이트
                 - 그 외 필드는 모두 업데이트 가능
-            
+
             IPC/CPC 분류 데이터 (data_type=2):
                 - ipr_seq는 기존 산업재산권 테이블에서 조회하여 자동 설정
                 - 다음 필드는 업데이트하지 않음:
@@ -258,63 +262,72 @@ class Database:
 
                 update_clauses = []
 
-                if data_type == 0:
+                if service_type == 0:
                     for column in data.keys():
                         if column not in [
-                            'survey_year', 
-                            'survey_month', 
-                            'write_time', 
-                            'modify_time', 
-                            'legal_status_desc', 
-                            'appl_no', 
+                            'survey_year',
+                            'survey_month',
+                            'write_time',
+                            'modify_time',
+                            'legal_status_desc',
+                            'appl_no',
                             'applicant_no',
-                            ]:
-                            update_clauses.append(f"{column} = VALUES({column})")
+                        ]:
+                            update_clauses.append(
+                                f"{column} = VALUES({column})")
                         elif column == 'legal_status_desc':
                             update_clauses.append(
-                                f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({column}) ELSE {column} END"
-                                )
-                
-                elif data_type == 1:
+                                f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({
+                                    column}) ELSE {column} END"
+                            )
+
+                elif service_type == 1:
                     columns = columns.removesuffix(', appl_no')
                     for column in data.keys():
                         if column not in [
-                            'ipr_seq', 
-                            'ipc_seq', 
+                            'ipr_seq',
+                            'ipc_seq',
                             'applicant_no',
                             'appl_no',
-                            ]:
-                            update_clauses.append(f"{column} = VALUES({column})")
-                    
+                        ]:
+                            update_clauses.append(
+                                f"{column} = VALUES({column})")
+
                     # ipr_seq 컬럼 추가
                     values.append(data['appl_no'])
                     columns = columns + ', ipr_seq'
                     if org_type == 0:
-                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
+                        placeholders = placeholders + \
+                            ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
                     elif org_type == 1:
-                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
+                        placeholders = placeholders + \
+                            ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
 
-                elif data_type == 2:
+                elif service_type == 2:
                     columns = columns.removesuffix(', appl_no')
                     placeholders = placeholders.removesuffix(', %s')
                     for column in data.keys():
                         if column not in [
                             'ipr_seq',
                             'appl_no'
-                            ]:
-                            update_clauses.append(f"{column} = VALUES({column})")
+                        ]:
+                            update_clauses.append(
+                                f"{column} = VALUES({column})")
                         elif column == 'priority_nation':
                             update_clauses.append(
-                                f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({column}) ELSE {column} END"
-                                )
-                        
+                                f"{column} = CASE WHEN {column} != VALUES({column}) THEN VALUES({
+                                    column}) ELSE {column} END"
+                            )
+
                     # ipr_seq 컬럼 추가
                     columns = columns + ', ipr_seq'
                     if org_type == 0:
-                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
+                        placeholders = placeholders + \
+                            ', (SELECT ipr_seq FROM junesoft.tb24_300_corp_ipr_reg WHERE appl_no = %s)'
                     elif org_type == 1:
-                        placeholders = placeholders + ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
-                        
+                        placeholders = placeholders + \
+                            ', (SELECT ipr_seq FROM junesoft.tb24_400_univ_ipr_reg WHERE appl_no = %s)'
+
                 else:
                     print('\n정의되지 않은 data type입니다.')
                     return
@@ -360,9 +373,95 @@ class Database:
             rows = cursor.fetchall()
 
             return rows
-        
+
         except OperationalError as e:
             print(f"기업번호 조회 실패: {str(e)}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            self.close()
+
+    def load_applicant_no(self,
+                          table_to_load: list[str, list[str]],
+                          org_info: tuple[list[dict], str]):
+        self.connect()
+        cursor = None
+        table_name = table_to_load[0]
+        org_data_list = org_info[0]
+
+        try:
+            self.connect()
+            cursor = self.connection.cursor()
+            for org_data in org_data_list:
+                values = list(org_data.values())
+
+                cursor.execute(
+                    f"INSERT INTO {table_name} "
+                    f"(applicant_no, applicant, corp_no, biz_no) "
+                    f"VALUES (%s, %s, %s, %s)"
+                    f"ON DUPLICATE KEY UPDATE "
+                    f"applicant_no = VALUES(applicant_no)",
+                    values
+                )
+            return self.connection.commit()
+        except OperationalError as e:
+            print(f"Error: {e}")
+            self.connection.rollback()
+            return
+        finally:
+            if cursor:
+                cursor.close()
+            self.close()
+
+    def get_applicant_no(self, org_type: int) -> list[str]:
+        """기관 유형에 따른 출원인 번호 목록을 조회합니다.
+
+        Args:
+            org_type (int): 기관 유형 코드
+                - 0: 기업
+                - 1: 대학
+                - 2: 기업과 대학 모두
+
+        Returns:
+            list[str]: 출원인 번호 목록
+            None: 데이터베이스 조회 실패 시
+
+        Raises:
+            OperationalError: 데이터베이스 연결 또는 쿼리 실행 중 오류 발생 시
+
+        Note:
+            - 기업 데이터는 tb24_200_corp_applicant 테이블에서 조회
+            - 대학 데이터는 tb24_210_univ_applicant 테이블에서 조회
+            - org_type이 2인 경우 두 테이블의 데이터를 UNION으로 통합 조회
+        """
+        cursor = None
+
+        try:
+            self.connect()
+            cursor = self.connection.cursor()
+            if org_type == 0:
+                cursor.execute(
+                    f"SELECT applicant_no FROM {
+                        self.db_name}.tb24_200_corp_applicant"
+                )
+            elif org_type == 1:
+                cursor.execute(
+                    f"SELECT applicant_no FROM {
+                        self.db_name}.tb24_210_univ_applicant"
+                )
+            elif org_type == 2:
+                cursor.execute(
+                    f"SELECT applicant_no FROM {
+                        self.db_name}.tb24_200_corp_applicant "
+                    f"UNION "
+                    f"SELECT applicant_no FROM {
+                        self.db_name}.tb24_210_univ_applicant;"
+                )
+            rows = cursor.fetchall()
+            return list(row[0] for row in rows)
+        except OperationalError as e:
+            print(f"Error: {e}")
             return None
         finally:
             if cursor:
