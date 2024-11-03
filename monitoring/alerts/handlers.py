@@ -4,19 +4,24 @@ from typing import Dict, Any, Optional
 import aiohttp
 import smtplib
 import logging
+import time
 from datetime import datetime
 from email.mime.text import MIMEText
-from monitoring.core.metrics import alert_send_time, alert_send_failures
-from monitoring.core.exceptions import AlertError
-from monitoring.core.config import Config
+from ..core.metrics import IPRMetrics
+from ..core.exceptions import AlertError
+from ..core.config import Config
+from .manager import Alert, AlertSeverity
 
 logger = logging.getLogger(__name__)
 
 class AlertHandler(ABC):
     """알림 전송을 위한 기본 핸들러 클래스"""
     
+    def __init__(self, metrics: Optional[IPRMetrics] = None):
+        self.metrics = metrics
+    
     @abstractmethod
-    async def send_alert(self, alert: 'Alert') -> bool:
+    async def send_alert(self, alert: Alert) -> bool:
         """알림을 전송하는 추상 메서드"""
         pass
     
@@ -27,15 +32,18 @@ class AlertHandler(ABC):
             exc_info=True,
             extra={"handler": handler_name, "error": str(e)}
         )
-        alert_send_failures.labels(handler=handler_name).inc()
+        if self.metrics:
+            self.metrics.alert_send_failures.labels(handler=handler_name).inc()
         return False
 
 class SlackAlertHandler(AlertHandler):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, metrics: Optional[IPRMetrics] = None):
         """
         Args:
             config: 설정 객체 (webhook_url 필수)
+            metrics: 메트릭 객체 (선택)
         """
+        super().__init__(metrics)
         self.webhook_url = config.get_value("slack_webhook_url")
         if not self.webhook_url:
             raise ValueError("Slack webhook URL is required")
@@ -44,12 +52,16 @@ class SlackAlertHandler(AlertHandler):
             total=config.get_value("slack_timeout", 10)
         )
     
-    @alert_send_time.time()
-    async def send_alert(self, alert: 'Alert') -> bool:
+    async def send_alert(self, alert: Alert) -> bool:
+        start_time = time.time()
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 payload = self._create_payload(alert)
                 async with session.post(self.webhook_url, json=payload) as response:
+                    if self.metrics:
+                        duration = time.time() - start_time
+                        self.metrics.alert_send_time.labels(handler="slack").observe(duration)
+                        
                     if not response.ok:
                         raise AlertError(f"Slack API returned {response.status}")
                     return True
@@ -57,7 +69,7 @@ class SlackAlertHandler(AlertHandler):
         except Exception as e:
             return await self._handle_error(e, "slack")
             
-    def _create_payload(self, alert: 'Alert') -> Dict[str, Any]:
+    def _create_payload(self, alert: Alert) -> Dict[str, Any]:
         """Slack 메시지 페이로드 생성"""
         return {
             "text": f"*{alert.title}*\n{alert.message}",
@@ -73,7 +85,7 @@ class SlackAlertHandler(AlertHandler):
             }]
         }
         
-    def _get_color(self, severity: 'AlertSeverity') -> str:
+    def _get_color(self, severity: AlertSeverity) -> str:
         """알림 심각도에 따른 색상 반환"""
         return {
             AlertSeverity.INFO: "#36a64f",
@@ -83,11 +95,13 @@ class SlackAlertHandler(AlertHandler):
         }.get(severity, "#000000")
 
 class EmailAlertHandler(AlertHandler):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, metrics: Optional[IPRMetrics] = None):
         """
         Args:
             config: SMTP 설정을 포함한 설정 객체
+            metrics: 메트릭 객체 (선택)
         """
+        super().__init__(metrics)
         self.smtp_config = config.get_section("smtp")
         self._validate_config()
         
@@ -98,17 +112,22 @@ class EmailAlertHandler(AlertHandler):
         if missing:
             raise ValueError(f"Missing required SMTP config fields: {missing}")
     
-    @alert_send_time.time()
-    async def send_alert(self, alert: 'Alert') -> bool:
+    async def send_alert(self, alert: Alert) -> bool:
+        start_time = time.time()
         try:
             msg = self._create_message(alert)
             await self._send_email(msg)
+            
+            if self.metrics:
+                duration = time.time() - start_time
+                self.metrics.alert_send_time.labels(handler="email").observe(duration)
+                
             return True
             
         except Exception as e:
             return await self._handle_error(e, "email")
             
-    def _create_message(self, alert: 'Alert') -> MIMEText:
+    def _create_message(self, alert: Alert) -> MIMEText:
         """이메일 메시지 생성"""
         msg = MIMEText(self._format_message(alert))
         msg['Subject'] = f"[{alert.severity.value.upper()}] {alert.title}"
@@ -128,7 +147,7 @@ class EmailAlertHandler(AlertHandler):
                 )
             server.send_message(msg)
             
-    def _format_message(self, alert: 'Alert') -> str:
+    def _format_message(self, alert: Alert) -> str:
         """이메일 본문 포맷팅"""
         message = f"""
 Alert Details:
