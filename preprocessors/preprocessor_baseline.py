@@ -5,7 +5,7 @@
 from lxml import etree
 
 from utils.time_utils import get_today_yymmdd, is_yymmdd_format
-from config.config import api_params
+from config.config import api_output_params
 
 class DataParser():
     '''
@@ -20,44 +20,44 @@ class DataParser():
         else:
             self.date = get_today_yymmdd()
         
-    def xml_to_list(self, data_class):
+    def xml_to_list(self, org_type):
         '''
         기업, 대학 | 특허/실용신안, 디자인, 상표 xml파일을 읽어서 데이터를 리턴
-        input : data_service : patent_utility (특허/실용신안)
+        input : service_type : patent_utility (특허/실용신안)
                              design (디자인)
                              trademark (상표)
-                data_class : corp (기업)
+                org_type : corp (기업)
                              univ (대학)
         '''
         self.ipr_reg_data_list = []
         self.ipc_cpc_data_list = []
         self.priority_data_list = []
 
-        self.ipr_reg_parser(data_class, data_service='patent_utility')
-        self.ipr_reg_parser(data_class, data_service='design')
-        self.ipr_reg_parser(data_class, data_service='trademark')
+        self.ipr_reg_parser(org_type, service_type='patent_utility')
+        self.ipr_reg_parser(org_type, service_type='design')
+        self.ipr_reg_parser(org_type, service_type='trademark')
 
         return self.ipr_reg_data_list, self.ipc_cpc_data_list, self.priority_data_list
 
 
-    def ipr_reg_parser(self, data_class, data_service):
+    def ipr_reg_parser(self, org_type, service_type):
         '''
-        data_service에 해당하는 파라미터에 맞춰서 클래스 변수에 저장합니다.
+        service_type에 해당하는 파라미터에 맞춰서 클래스 변수에 저장합니다.
         서브 테이블인 ipc_code, priority 함수를 호출해서 함께 저장합니다.
-        input : data_service : patent_utility (특허/실용신안)
+        input : service_type : patent_utility (특허/실용신안)
                                design (디자인)
                                trademark (상표)
         '''
-        path = f'{self.path}/{self.date}_{data_service}_{data_class}.xml'
+        path = f'{self.path}/{self.date}_{service_type}_{org_type}.xml'
         # try:
         tree = etree.parse(path)
         root = tree.getroot()
         temp = None
         for item in root.iter('item'):
-            if data_service == 'patent_utility':
+            if service_type == 'patent_utility':
                 temp = self.ipc_cpc_parser(item)
-            elif data_service in ('design', 'trademark'):
-                temp = self.priority_parser(data_service, item)
+            elif service_type in ('design', 'trademark'):
+                temp = self.priority_parser(service_type, item)
             if temp is not None:
                 self.ipr_reg_data_list.append(temp)
             
@@ -69,7 +69,7 @@ class DataParser():
         '''
 
         temp = {}
-        for key, value in api_params['patent_utility'].items():
+        for key, value in api_output_params['patent_utility'].items():
             if value == 'applicationNumber':
                 appl_no = str(item.find(f'.//{value}').text)
                 temp[f'{key}'] = appl_no
@@ -88,14 +88,14 @@ class DataParser():
 
         return temp
 
-    def priority_parser(self, data_service, item):
+    def priority_parser(self, service_type, item):
         '''
         priority에 대한 데이터가 존재한다면 클래스 변수(priority_data_list)에 저장합니다.
         ipr_reg_data_list에 대한 key, value값을 딕셔너리에 저장 후 리턴합니다.
         '''
 
         temp = {}
-        for key, value in api_params[data_service].items():
+        for key, value in api_output_params[service_type].items():
             if value == 'applicationNumber':
                 appl_no = str(item.find(f'.//{value}').text)
                 temp[f'{key}'] = appl_no
