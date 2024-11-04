@@ -170,14 +170,51 @@ tables = {
     ]],
 }
 
+# api input params
+api_input_params = {
+    'patent_utility' : {},
+    'design' : {
+        'open' : 'true',
+        'rejection' : 'true',
+        'destroy' : 'true',
+        'cancle' : 'true',
+        'notice' : 'true',
+        'registration' : 'true',
+        'invalid' : 'true',
+        'abandonment' : 'true',
+        'simi' : 'true',
+        'part' : 'true',
+        'etc' : 'true',
+        },
+    'trademark' : {
+        'application' : 'true',
+        'registration' : 'true',
+        'refused' : 'true',
+        'expiration' : 'true',
+        'withdrawal' : 'true',
+        'publication' : 'true',
+        'cancel' : 'true',
+        'abandonment' : 'true',
+        'trademark' : 'true',
+        'serviceMark' : 'true',
+        'trademarkServiceMark' : 'true',
+        'businessEmblem' : 'true',
+        'collectiveMark' : 'true',
+        'internationalMark' : 'true',
+        'character' : 'true',
+        'figure' : 'true',
+        'compositionCharacter' : 'true',
+        'figureComposition' : 'true',
+        },
+        }
 
-# api 파라미터
+# api output params
 '''
 key : 특허/실용신안, 디자인, 상표
 values : key : 300(400) 테이블 칼럼명
          values : api 출력값(파라미터)
 '''
-api_params = {
+api_output_params = {
     'patent_utility' : {
         'applicant_no' : 'applicantNo', # 특허고객번호
         'title' : 'inventionTitle',  # 발명의 명칭(상표명, 디자인명)
@@ -253,8 +290,9 @@ api_params = {
     },
 }
 
+
 # url
-url = {
+api_url = {
     'applicant_no' : 'http://plus.kipris.or.kr/openapi/rest/CorpBsApplicantService/corpBsApplicantInfoV2',
     'patent_utility' : 'http://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getAdvancedSearch',
     'design' : 'http://plus.kipris.or.kr/kipo-api/kipi/designInfoSearchService/getAdvancedSearch',
