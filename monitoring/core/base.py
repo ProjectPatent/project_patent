@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from .metrics import IPRMetrics
 from .config import MonitoringConfig
@@ -27,9 +27,9 @@ class BaseMonitor(ABC):
         """
         BaseMonitor 초기화 메서드
 
-        파라미터는 metrics(IPRMetrics_모니터링할 메트릭 객체), config(MonitoringConfig_모니터링 설정 객체) 
-        위 두 가지로 이루어져 있습니다. 
-
+        Parameters:
+            metrics (IPRMetrics): 모니터링할 메트릭 객체.
+            config (MonitoringConfig): 모니터링 설정 객체.
         """
         self.metrics = metrics                # 메트릭 객체를 통해 모니터링 데이터를 기록 및 관리
         self.config = config                  # 모니터 설정을 저장
@@ -48,7 +48,7 @@ class BaseMonitor(ABC):
         if self._running:
             raise MonitoringError("Monitor is already running")  # 실행 중인 경우 에러 발생
         self._running = True
-        self._start_time = datetime.utcnow()  # 현재 시간을 시작 시간으로 설정
+        self._start_time = datetime.now(timezone.utc)  # 현재 시간을 시작 시간으로 설정 (timezone-aware)
         logger.info(f"{self.__class__.__name__} started")  # 시작 로그
         
     @abstractmethod
@@ -86,9 +86,12 @@ class BaseMonitor(ABC):
         Returns:
             Dict[str, Any]: 모니터 상태 정보 딕셔너리.
         """
+        uptime = (
+            (datetime.now(timezone.utc) - self._start_time).total_seconds()
+            if self._start_time else 0
+        )
         return {
             "running": self._running,                                     # 모니터 실행 중 여부
             "start_time": self._start_time.isoformat() if self._start_time else None,  # 모니터 시작 시간
-            "uptime_seconds": (datetime.utcnow() - self._start_time).total_seconds() 
-                            if self._start_time else 0  # 모니터가 실행된 총 시간(초)
+            "uptime_seconds": uptime                                      # 모니터가 실행된 총 시간(초)
         }

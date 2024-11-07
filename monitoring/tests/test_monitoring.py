@@ -1,16 +1,18 @@
-# test_monitoring.py
+# tests/test_monitoring.py
+import pytest
 import asyncio
-from monitoring import (
-    MonitoringConfig,
-    IPRMetrics,
-    AlertManager,
-    APIMonitor,
-    ResourceMonitor
-)
+from monitoring.core.config import MonitoringConfig
+from monitoring.core.metrics import IPRMetrics
+from monitoring.monitors.api_monitor import APIMonitor
+from monitoring.monitors.resource_monitor import ResourceMonitor
 
+@pytest.mark.asyncio
 async def test_system():
     # 1. 기본 설정으로 시작
-    config = MonitoringConfig(service_name="test_monitor")
+    config = MonitoringConfig(
+        service_name="test_monitor",
+        check_interval=0.1  # 빠른 체크 간격 설정
+    )
     metrics = IPRMetrics("test_monitor")
     
     # 2. API 모니터 테스트

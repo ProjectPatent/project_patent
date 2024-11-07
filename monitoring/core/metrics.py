@@ -1,7 +1,5 @@
-# monitoring/core/metrics.py
-
 from typing import Dict, Any
-from prometheus_client import Counter, Summary, Gauge, Histogram
+from prometheus_client import Counter, Summary, Gauge, Histogram, CollectorRegistry
 from dataclasses import dataclass
 import logging
 from .exceptions import MetricError, ValidationError
@@ -36,6 +34,7 @@ class IPRMetrics:
             )
         self.service_name = service_name
         self.config = config or MetricConfig()
+        self.registry = CollectorRegistry()  # 별도의 레지스트리 생성
         self._setup_metrics()  # 메트릭을 설정하는 내부 메서드 호출
         logger.info(f"Initialized metrics for service: {service_name}")
     
@@ -48,73 +47,85 @@ class IPRMetrics:
             self.api_requests = Counter(
                 f'{prefix}api_requests_total', 
                 'Total number of API requests',
-                ['endpoint', 'method', 'status']
+                ['endpoint', 'method', 'status'],
+                registry=self.registry
             )
             
             self.api_latency = Summary(
                 f'{prefix}api_latency_seconds',
                 'API request latency in seconds',
-                ['endpoint', 'method']
+                ['endpoint', 'method'],
+                registry=self.registry
             )
             
             self.api_latency_histogram = Histogram(
                 f'{prefix}api_latency_histogram_seconds',
                 'API request latency distribution',
                 ['endpoint', 'method'],
-                buckets=self.config.buckets
+                buckets=self.config.buckets,
+                registry=self.registry
             )
             
             # 에러 메트릭
             self.errors = Counter(
                 f'{prefix}errors_total',
                 'Total error count',
-                ['type', 'endpoint']
+                ['type', 'endpoint'],
+                registry=self.registry
             )
 
             # 진행 상태 메트릭
             self.processing_progress = Gauge(
                 f'{prefix}processing_progress_percent',
-                'Current progress of processing'
+                'Current progress of processing',
+                registry=self.registry
             )
             
             # 리소스 사용량 메트릭
             self.active_connections = Gauge(
                 f'{prefix}active_connections',
-                'Number of active connections'
+                'Number of active connections',
+                registry=self.registry
             )
             
             self.memory_usage = Gauge(
                 f'{prefix}memory_usage_bytes',
-                'Current memory usage'
+                'Current memory usage',
+                registry=self.registry
             )
             
             self.api_total_duration = Gauge(
                 f'{prefix}api_total_duration_seconds',
-                'Total time from start to finish of API processing'
+                'Total time from start to finish of API processing',
+                registry=self.registry
             )
 
             # 알림 관련 메트릭
             self.alert_send_time = Summary(
                 f'{prefix}alert_send_duration_seconds',
                 'Time taken to send alerts',
-                ['handler']
+                ['handler'],
+                registry=self.registry
             )
             
             self.alert_count = Counter(
                 f'{prefix}alerts_total',
                 'Total number of alerts',
-                ['severity']
+                ['severity'],
+                registry=self.registry
             )
             
             self.alert_send_failures = Counter(
                 f'{prefix}alert_failures_total',
                 'Number of failed alert sends',
-                ['handler']
+                ['handler'],
+                registry=self.registry
             )
             
             self.alert_history_size = Gauge(
                 f'{prefix}alert_history_size',
-                'Current size of alert history'
+                'Current size of alert history',
+                registry=self.registry
             )
             
             logger.info("Successfully set up all metrics")

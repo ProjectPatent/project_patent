@@ -5,7 +5,8 @@ import aiohttp
 import smtplib
 import logging
 import time
-from datetime import datetime
+import asyncio  # 추가된 부분
+from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from ..core.metrics import IPRMetrics
 from ..core.exceptions import AlertError
@@ -123,7 +124,7 @@ class EmailAlertHandler(AlertHandler):
                 self.metrics.alert_send_time.labels(handler="email").observe(duration)
                 
             return True
-            
+                
         except Exception as e:
             return await self._handle_error(e, "email")
             
@@ -137,6 +138,11 @@ class EmailAlertHandler(AlertHandler):
             
     async def _send_email(self, msg: MIMEText):
         """이메일 전송"""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._send_email_sync, msg)
+        
+    def _send_email_sync(self, msg: MIMEText):
+        """동기식 이메일 전송"""
         with smtplib.SMTP(self.smtp_config['host'], self.smtp_config['port']) as server:
             if self.smtp_config.get('use_tls', False):
                 server.starttls()

@@ -106,8 +106,16 @@ async def test_metrics_recording(mock_metrics, alert_manager, mock_slack_handler
         
         # 메트릭이 기록되었는지 확인
         metrics_data = await mock_metrics.export_metrics()
+        
+        # 알림 총 개수 메트릭 확인
         assert "test_service_alerts_total" in metrics_data
-        assert "test_service_alert_send_time" in metrics_data
+        
+        # 알림 전송 시간 메트릭 확인 (Summary 타입은 _count와 _created 접미사를 가짐)
+        assert "test_service_alert_send_duration_seconds_count" in metrics_data
+        assert "test_service_alert_send_duration_seconds_created" in metrics_data
+        
+        # 알림 히스토리 크기 확인
+        assert metrics_data["test_service_alert_history_size"] == 1.0
 
 @pytest.mark.asyncio
 async def test_alert_history_management(alert_manager, mock_alert):
