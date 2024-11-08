@@ -1,18 +1,24 @@
 """
-mysql_loader 모듈
+MySQL 데이터베이스와의 연결 및 데이터 조작을 위한 모듈.
 
-이 모듈은 MySQL 데이터베이스와의 연결 및 데이터 조작을 위한 기능을 제공합니다.
+이 모듈은 MySQL 데이터베이스와의 연결을 관리하고, 데이터 조작을 위한 다양한 기능을 제공합니다.
 환경 변수에서 데이터베이스 연결 정보를 로드하고, 데이터베이스 연결, 쿼리 실행,
 데이터 삽입 및 업데이트 등의 기능을 포함하는 Database 클래스를 정의합니다.
 
+주요 기능:
+- 데이터베이스 연결 생성 및 종료
+- SQL 쿼리 실행
+- 데이터 삽입 및 업데이트
+- 데이터베이스에서 정보 조회
+
 사용된 라이브러리:
-- os: 환경 변수 접근을 위해 사용
-- dotenv: .env 파일에서 환경 변수를 로드하기 위해 사용
-- MySQLdb: MySQL 데이터베이스와의 연결 및 쿼리 실행을 위해 사용
+- os: 환경 변수 접근을 위해 사용됩니다.
+- dotenv: .env 파일에서 환경 변수를 로드하기 위해 사용됩니다.
+- MySQLdb: MySQL 데이터베이스와의 연결 및 쿼리 실행을 위해 사용됩니다.
+- tqdm: 진행 상황 표시를 위한 라이브러리입니다.
 """
 
 import os
-from datetime import datetime
 
 from dotenv import load_dotenv
 from MySQLdb import OperationalError, connect
@@ -25,8 +31,22 @@ load_dotenv()
 class Database:
     """MySQL 데이터베이스 연결 및 쿼리 실행을 관리하는 클래스.
 
-    환경 변수에서 데이터베이스 연결 정보를 가져와 초기화하고,
-    데이터베이스 연결, 쿼리 실행, 데이터 삽입 등의 기능을 제공합니다.
+    이 클래스는 환경 변수에서 데이터베이스 연결 정보를 가져와 초기화하며,
+    데이터베이스와의 연결, SQL 쿼리 실행, 데이터 삽입 및 업데이트 등의 기능을 제공합니다.
+
+    주요 기능:
+        - 데이터베이스 연결 생성 및 종료
+        - SQL 쿼리 실행
+        - 데이터 삽입 및 업데이트
+        - 데이터베이스에서 정보 조회
+
+    Attributes:
+        host (str): 데이터베이스 호스트 주소.
+        user (str): 데이터베이스 사용자 이름.
+        password (str): 데이터베이스 비밀번호.
+        db_name (str): 데이터베이스 이름.
+        db_port (int): 데이터베이스 포트 번호.
+        connection (MySQLdb.Connection): 데이터베이스 연결 객체.
     """
 
     def __init__(self) -> None:
@@ -209,9 +229,13 @@ class Database:
                 table_to_load: list[str, list[str]],
                 dataset: list[dict],
                 batch_size: int = 1000,
-                ipr_seqs: dict[str, int] = None,
+                ipr_seqs: dict[str, int] = None,  # 현재 IPR data upsert 문제로 미사용
                 ):
         """데이터를 데이터베이스에 삽입하거나 업데이트합니다.
+
+        이 함수는 주어진 데이터셋을 사용하여 데이터베이스에 데이터를 삽입하거나
+        업데이트합니다. 기관 유형 및 서비스 유형에 따라 적절한 쿼리를 구성하고,
+        지정된 배치 크기마다 데이터베이스에 커밋합니다.
 
         Args:
             org_type (int): 기관 유형 코드
@@ -251,9 +275,6 @@ class Database:
 
             table_name = table_to_load[0]
 
-            # CSV 저장을 위한 디렉토리 생성
-            os.makedirs('./var', exist_ok=True)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             batch_count = 0
 
             desc_org_type = '기업' if org_type == 0 else '대학'
@@ -310,10 +331,9 @@ class Database:
                     for value in data.values():
                         values.append(value)
                     # values.append(ipr_seqs[data['appl_no']])
-                    values.append(None)
-                    ipr_table = 'tb24_300_corp_ipr_reg' if org_type == 0 else 'tb24_400_univ_ipr_reg'
-
-                    # VALUES (%s, %s, %s, (SELECT ipr_seq FROM {ipr_table} WHERE appl_no = %s))
+                     # 현재 IPR data upsert 문제로 append(None) 수행
+                    values.append(None) # 현재 IPR data upsert 문제로 append(None) 수행
+                    
                     query = f"""
                     INSERT INTO {table_name} (appl_no, ipc_cpc, ipc_cpc_code, ipr_seq)
                     VALUES (%s, %s, %s, %s)
@@ -327,10 +347,10 @@ class Database:
                 elif service_type == 2:
                     for value in data.values():
                         values.append(value)
-                    values.append(ipr_seqs[data['appl_no']])
+                    # values.append(ipr_seqs[data['appl_no']])
+                    values.append(None) # 현재 IPR data upsert 문제로 append(None) 수행
                     values.pop(-2)
 
-                    # VALUES (%s, %s, %s, (SELECT ipr_seq FROM {ipr_table} WHERE appl_no = %s))
                     query = f"""
                     INSERT INTO {table_name} (applicant_no, priority_date, priority_no, ipr_seq)
                     VALUES (%s, %s, %s, %s)
@@ -344,32 +364,20 @@ class Database:
                 current_batch.append(tuple(values))
                 
                 if len(current_batch) >= batch_size:
-                    # CSV 파일로 현재 배치 저장
                     batch_count += 1
-                    # csv_filename = f'./var/batch_{timestamp}_{batch_count}.csv'
-                    # with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                    #     writer = csv.writer(f)
-                    #     writer.writerows(current_batch)
 
                     cursor.executemany(query, current_batch)
                     self.connection.commit()
                     total_processed += len(current_batch)
-                    # print(f"{total_processed} rows processed - Saved to {csv_filename}")
                     
                     current_batch = []
 
             if current_batch:
-                # 마지막 배치 저장
                 batch_count += 1
-                # csv_filename = f'./var/batch_{timestamp}_{batch_count}.csv'
-                # with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                #     writer = csv.writer(f)
-                #     writer.writerows(current_batch)
 
                 cursor.executemany(query, current_batch)
                 self.connection.commit()
                 total_processed += len(current_batch)
-                # print(f"Total {total_processed} rows processed - Final batch saved to {csv_filename}")
 
         except OperationalError as e:
             print(f"Error: {e}")
@@ -466,7 +474,7 @@ class Database:
         Args:
             org_type (int): 기관 유형 코드
                 - 0: 기업
-                - 1: 대학
+                - 1: 대��
                 - 2: 기업과 대학 모두
 
         Returns:

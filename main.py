@@ -116,20 +116,28 @@ def main():
     ## 기업
     # DBManager(file -> 데이터 베이스 적재, 300) (기업)
     ipr_reg_corp = db.append_biz_no(table_metadata=tables['TB_200'], dataset=ipr_reg_corp)
-    db.upsert_data(org_type=0, service_type=0, table_to_load=tables['TB_300'], dataset=ipr_reg_corp)
+    db.upsert_data(org_type=0, service_type=0,
+                   table_to_load=tables['TB_300'], dataset=ipr_reg_corp, batch_size=1000)
+    corp_ipr_seqs = db.get_ipr_seqs(org_type=0)
     ## DBManager(file -> 데이터 베이스 적재, 310) (기업)
-    db.upsert_data(org_type=0, service_type=1, table_to_load=tables['TB_310'], dataset=ipc_cpc_corp) # 함수명 수정 예정
+    db.upsert_data(org_type=0, service_type=1,
+                   table_to_load=tables['TB_310'], dataset=ipc_cpc_corp, ipr_seqs=corp_ipr_seqs, batch_size=1000)
     # ## DBManager(file -> 데이터 베이스 적재, 320) (기업)
-    db.upsert_data(org_type=0, service_type=2, table_to_load=tables['TB_320'], dataset=priority_corp) # 함수명 수정 예정
+    db.upsert_data(org_type=0, service_type=2,
+                   table_to_load=tables['TB_320'], dataset=priority_corp, ipr_seqs=corp_ipr_seqs, batch_size=1000)
 
     # ## 대학
     # ## DBManager(file -> 데이터 베이스 적재, 400) (대학)
     ipr_reg_univ = db.append_biz_no(table_metadata=tables['TB_210'], dataset=ipr_reg_univ)
-    db.upsert_data(org_type=1, service_type=0, table_to_load=tables['TB_400'], dataset=ipr_reg_univ)
+    db.upsert_data(org_type=1, service_type=0,
+                   table_to_load=tables['TB_400'], dataset=ipr_reg_univ, batch_size=1000)
     # ## DBManager(file -> 데이터 베이스 적재, 410) (대학)
-    db.upsert_data(org_type=1, service_type=1, table_to_load=tables['TB_410'], dataset=ipc_cpc_univ)
+    univ_ipr_seqs = db.get_ipr_seqs(org_type=1)
+    db.upsert_data(org_type=1, service_type=1,
+                   table_to_load=tables['TB_410'], dataset=ipc_cpc_univ, ipr_seqs=univ_ipr_seqs, batch_size=1000)
     # ## DBManager(file -> 데이터 베이스 적재, 420) (대학)
-    db.upsert_data(org_type=1, service_type=2, table_to_load=tables['TB_420'], dataset=priority_univ)
+    db.upsert_data(org_type=1, service_type=2,
+                   table_to_load=tables['TB_420'], dataset=priority_univ, ipr_seqs=univ_ipr_seqs, batch_size=1000)
     end = time()
     print(f"전체 플로우 시간 : {end - start}")
 
