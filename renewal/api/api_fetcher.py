@@ -87,7 +87,8 @@ class APIFetcher:
             ascii=True,
             ncols=128,
         ) if enable_progress_bar else None
-        self.logger = logger.add(
+        self.logger = logger
+        self.logger.add(
             f"{API_FETCHER_LOGGER['DIR_PATH']}{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.log",
             level=API_FETCHER_LOGGER['LEVEL'],
             format=API_FETCHER_LOGGER['FORMAT'],
@@ -149,7 +150,6 @@ class APIFetcher:
                     async with session.get(
                         url=request["url"],
                         params=request["params"],
-                        connector=self.connector
                     ) as response:
                         duration = time.time() - start_time 
                         
@@ -171,6 +171,11 @@ class APIFetcher:
                             try:
                                 xml_data = await response.text()
                                 json_data = xmltodict.parse(xml_data)
+                                print(json_data)
+                                items = json_data.get('response', {}).get('body', {}).get('items', [])
+
+                                if items is None:
+                                    continue
 
                                 # 페이지네이션 처리
                                 if self.ipr_mode != 'applicant_no':
@@ -179,8 +184,10 @@ class APIFetcher:
                                     for paged_request in paged_requests_list:
                                         await self.request_queue.put(paged_request)
 
-                                items = json_data.get('root', {}).get(
-                                    'items', {}).get('item', [])
+                                    items = json_data.get('response', {}).get(
+                                        'body', {}).get('items', {}).get('item', [])
+                                else:
+                                    items = json_data.get('response', {}).get('body', {}).get('items', {}).get('corpBsApplicantInfo', [])
 
                                 # 'items'가 단일 element인 경우, list로 처리
                                 if isinstance(items, dict):

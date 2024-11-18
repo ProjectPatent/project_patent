@@ -10,7 +10,7 @@ def format_corporation_no(corp_no_list: list[str]) -> list[str]:
     """
     formatted_corp_no_list = []
     for corp_no in corp_no_list:
-        formatted_corp_no_list.append("-".join([corp_no[0][:6], corp_no[0][6:]]))
+        formatted_corp_no_list.append("-".join([corp_no[:6], corp_no[6:]]))
     return formatted_corp_no_list
 
 
@@ -27,6 +27,6 @@ def format_biz_no(biz_no_list: list[str]) -> list[str]:
     formatted_biz_no_list = []
     for biz_no in biz_no_list:
         formatted_biz_no_list.append(
-            "-".join([biz_no[0][:3], biz_no[0][3:5], biz_no[0][5:]])
+            "-".join([biz_no[:3], biz_no[3:5], biz_no[5:]])
         )
     return formatted_biz_no_list

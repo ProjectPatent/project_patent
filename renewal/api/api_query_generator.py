@@ -26,6 +26,7 @@ GENERATED_QUERIES_COUNTER = Counter(
 class APIQueryGenerator:
     def __init__(self):
         self.api_key = os.getenv('KIPRIS_API_KEY')
+        self.database_loader = Database()
 
     def generate_ipr_fetch_query(self, org_type: str, ipr_mode: str) -> list[dict]:
         start_time = time.time()
@@ -65,6 +66,8 @@ class APIQueryGenerator:
                     'params': params,
                 })
 
+        corp_numbers = format_corporation_no(
+            self.database_loader.fetch_corp_no())
             GENERATED_QUERIES_COUNTER.labels(
                 query_type='ipr_fetch',
                 org_type=org_type,

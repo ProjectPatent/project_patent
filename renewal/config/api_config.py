@@ -10,7 +10,7 @@ values : [0] - 테이블 이름,
 TABLES = {
     'COMMON': {
         'BIZ_INFO': [
-            'tb24_100_biz_info',
+            'tb24_100_bizinfo',
             [
                 'company_seq',
                 'biz_no',
