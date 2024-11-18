@@ -389,7 +389,12 @@ class Database:
                 f"SELECT corp_no FROM {TABLES['COMMON']['BIZ_INFO'][0]}")
             rows = cursor.fetchall()
 
-            return list(row[0] for row in rows)
+            result = []
+            for row in rows:
+                if row[0]:
+                    result.append(row[0])
+
+            return result
 
         except OperationalError as e:
             print(f"법인등록번호 조회 실패: {str(e)}")
@@ -417,8 +422,13 @@ class Database:
             cursor.execute(
                 f"SELECT biz_no FROM {TABLES['COMMON']['BIZ_INFO'][0]}")
             rows = cursor.fetchall()
+            
+            result = []
+            for row in rows:
+                if row[0]:
+                    result.append(row[0])
 
-            return list(row[0] for row in rows)
+            return result
 
         except OperationalError as e:
             print(f"사업자등록번호 조회 실패: {str(e)}")
