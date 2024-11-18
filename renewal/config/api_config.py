@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
 KIPRIS_API_KEY = os.getenv('KIPRIS_API_KEY')
 
 '''
@@ -10,7 +14,7 @@ values : [0] - 테이블 이름,
 TABLES = {
     'COMMON': {
         'BIZ_INFO': [
-            'tb24_100_biz_info',
+            'tb24_100_bizinfo',
             [
                 'company_seq',
                 'biz_no',
