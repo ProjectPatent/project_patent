@@ -77,10 +77,11 @@ class APIQueryGenerator:
         total_count = response_json['response']['count']['totalCount']
         paged_params = params.copy()
 
-        for page_no in range(2, total_count // items_per_page + 1):
-            paged_params['pageNo'] = page_no
-            requests_list.append({
-                'url': url,
-                'params': paged_params,
-            })
+        if total_count > items_per_page:
+            for page_no in range(2, total_count // items_per_page + 1):
+                paged_params['pageNo'] = page_no
+                requests_list.append({
+                    'url': url,
+                    'params': paged_params,
+                })
         return requests_list
