@@ -1,9 +1,5 @@
 import os
 
-from dotenv import load_dotenv
-
-
-load_dotenv()
 KIPRIS_API_KEY = os.getenv('KIPRIS_API_KEY')
 
 '''
