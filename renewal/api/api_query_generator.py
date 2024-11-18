@@ -11,6 +11,7 @@ from utils.formatters import format_corporation_no
 class APIQueryGenerator:
     def __init__(self):
         self.api_key = os.getenv('KIPRIS_API_KEY')
+        self.database_loader = Database()
 
     def generate_ipr_fetch_query(self, org_type: str, ipr_mode: str) -> list[dict]:
         org_type = org_type if org_type in ['univ', 'corp'] else 'invalid'
@@ -56,7 +57,7 @@ class APIQueryGenerator:
         api_input_params = API_INPUT_PARAMS['applicant_no']
 
         corp_numbers = format_corporation_no(
-            Database.fetch_corp_no())
+            self.database_loader.fetch_corp_no())
 
         for corp_number in corp_numbers:
             params = {}
