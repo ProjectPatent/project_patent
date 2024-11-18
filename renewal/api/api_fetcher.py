@@ -93,7 +93,7 @@ class APIFetcher:
                                 json_data = xmltodict.parse(xml_data)
 
                                 # 페이지네이션 처리
-                                if self.ipr_mode == 'applicant_no':
+                                if self.ipr_mode != 'applicant_no':
                                     paged_requests_list = self.api_query_generator.generate_paged_fetch_query(
                                         response_json=json_data, request=request)
                                     for paged_request in paged_requests_list:
