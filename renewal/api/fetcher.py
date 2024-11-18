@@ -4,6 +4,29 @@ import time
 import aiohttp
 from tqdm.asyncio import tqdm
 
+from prometheus_client import Gauge, Summary
+from config.fetcher_config import METRICS  
+
+# 메트릭 정의
+QUEUE_SIZE = Gauge(
+    f'{METRICS["PREFIX"]}fetcher_queue_size',
+    'Current size of the fetch queue'
+)
+
+WORKER_PROCESS_TIME = Summary(
+    f'{METRICS["PREFIX"]}worker_process_seconds',
+    'Time spent processing requests by workers'
+)
+
+ACTIVE_WORKERS = Gauge(
+    f'{METRICS["PREFIX"]}active_workers',
+    'Number of currently active workers'
+)
+
+BUCKET_TOKENS = Gauge(
+    f'{METRICS["PREFIX"]}token_bucket_tokens',
+    'Current number of tokens in the bucket'
+)
 
 async def refill_token_bucket(semaphore, tokens_per_second, max_tokens):
     while True:
@@ -16,19 +39,28 @@ async def refill_token_bucket(semaphore, tokens_per_second, max_tokens):
         await asyncio.sleep(1 / tokens_per_second)
 
 async def worker(queue, session, semaphore, progress_bar, delay):
-    await asyncio.sleep(delay)  # 작업 시작 지연
-    while True:
-        url = await queue.get()
-        await semaphore.acquire()  # 가용 토큰 발생까지 대기
-        try:
-            async with session.get(url) as response:
+    ACTIVE_WORKERS.inc()
+    try:
+        await asyncio.sleep(delay)  # 작업 시작 지연
+        while True:
+            QUEUE_SIZE.set(queue.qsize())
+            url = await queue.get()
+            start_time = time.time()
+            try:
+                await semaphore.acquire()  # 가용 토큰 발생까지 대기
+                BUCKET_TOKENS.set(semaphore._value)
+
+                async with session.get(url) as response:
                 # 응답 처리 로직
                 # print(f"응답 상태 코드: {response.status}")
                 pass
-        finally:
-            queue.task_done()
-            progress_bar.update(1)
-
+            finally:
+                WORKER_PROCESS_TIME.observe(time.time() - start_time)
+                queue.task_done()
+                progress_bar.update(1)
+    finally:
+        ACTIVE_WORKERS.dec()
+    
 async def main():
     tokens_per_second = 30  # 속도 제한: 초당 요청 수
     max_tokens = 30         # 버킷 내 최대 토큰 수
@@ -37,6 +69,7 @@ async def main():
     token_bucket = asyncio.BoundedSemaphore(max_tokens)
     for _ in range(max_tokens):
         await token_bucket.acquire()  # 토큰 버킷 비우기
+        BUCKET_TOKENS.set(token_bucket._value)
 
     # 버킷에 토큰 생성
     asyncio.create_task(refill_token_bucket(token_bucket, tokens_per_second, max_tokens))
@@ -44,6 +77,7 @@ async def main():
     url_queue = asyncio.Queue()
 
     connector = aiohttp.TCPConnector(limit=30)
+    
     async with aiohttp.ClientSession(connector=connector) as session:
         # 총 API 호출 수 설정
         total_requests = int(input("테스트할 API 호출 수를 입력하세요: "))
@@ -70,8 +104,8 @@ async def main():
                     token_bucket,
                     progress_bar,
                     0.02 * i
-                    )
                 )
+            )
             tasks.append(task)
 
         url = "http://43.203.191.28:5000/mock_api"
@@ -79,6 +113,7 @@ async def main():
         # 작업 큐에 각 요청 추가
         for _ in range(total_requests):
             await url_queue.put(url)
+            QUEUE_SIZE.set(url_queue.qsize())
 
         # 작업 큐의 모든 작업이 처리될 때까지 대기
         await url_queue.join()

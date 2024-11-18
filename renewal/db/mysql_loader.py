@@ -20,9 +20,34 @@ from MySQLdb import OperationalError, connect
 from tqdm import tqdm
 
 from config.api_config import TABLES
-
+from config.fetcher_config import METRICS  
+from prometheus_client import Counter, Summary, Gauge
 
 load_dotenv()
+
+# DB 메트릭 정의
+DB_OPERATION_TIME = Summary(
+    f'{METRICS["PREFIX"]}db_operation_seconds',
+    'Database operation time in seconds',
+    ['operation_type']
+)
+
+DB_CONNECTION_GAUGE = Gauge(
+    f'{METRICS["PREFIX"]}db_connections',
+    'Number of active database connections'
+)
+
+DB_ERROR_COUNTER = Counter(
+    f'{METRICS["PREFIX"]}db_errors_total',
+    'Number of database errors',
+    ['error_type']
+)
+
+DB_QUERY_COUNTER = Counter(
+    f'{METRICS["PREFIX"]}db_queries_total',
+    'Number of database queries',
+    ['query_type']
+)
 
 
 class Database:
