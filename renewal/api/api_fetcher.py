@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-
+import time
 import aiofiles
 import aiohttp
 from loguru import logger
@@ -11,6 +11,47 @@ import xmltodict
 from api.api_query_generator import APIQueryGenerator
 from config.fetcher_config import TOKEN_BUCKET, WORKER, AIOHTTP, API_FETCHER_LOGGER
 from utils.time_utils import get_today_yyyymmdd, get_timestamp
+
+# prometheus_client 라이브러리를 사용하여 메트릭을 수집
+from prometheus_client import Counter, Summary, Gauge, start_http_server
+from config.fetcher_config import METRICS
+
+# Prometheus 메트릭 정의
+REQUEST_COUNTER = Counter(
+    f'{METRICS["PREFIX"]}requests_total',
+    'Total number of API requests',
+    ['ipr_mode', 'org_type', 'status']
+)
+
+RESPONSE_TIME = Summary(
+    f'{METRICS["PREFIX"]}response_seconds',
+    'Response time in seconds',
+    ['ipr_mode', 'org_type']
+)
+
+ERROR_COUNTER = Counter(
+    f'{METRICS["PREFIX"]}errors_total',
+    'Number of errors encountered',
+    ['ipr_mode', 'org_type', 'error_type']
+)
+
+ACTIVE_REQUESTS = Gauge(
+    f'{METRICS["PREFIX"]}active_requests',
+    'Number of currently active requests',
+    ['ipr_mode', 'org_type']
+)
+
+QUEUE_SIZE = Gauge(
+    f'{METRICS["PREFIX"]}queue_size',
+    'Current size of the request queue',
+    ['ipr_mode', 'org_type']
+)
+
+TOKEN_BUCKET_GAUGE = Gauge(
+    f'{METRICS["PREFIX"]}token_bucket_tokens',
+    'Current number of available tokens in the bucket',
+    ['ipr_mode', 'org_type']
+)
 
 
 class APIFetcher:
@@ -35,6 +76,9 @@ class APIFetcher:
         self.requests_list = requests_list
         self.request_queue = asyncio.Queue()
         self.api_query_generator = APIQueryGenerator()
+
+        # 메트릭 서버 시작
+        start_http_server(METRICS['PORTS'][self.ipr_mode])
 
         self.progress_bar = tqdm(
             total=self.request_queue.qsize(),
@@ -66,6 +110,10 @@ class APIFetcher:
             try:
                 if self.token_bucket._value < self.MAX_TOKENS:
                     self.token_bucket.release()
+                    TOKEN_BUCKET_GAUGE.labels(
+                        ipr_mode=self.ipr_mode,
+                        org_type=self.org_type
+                    ).set(self.token_bucket._value)
             except ValueError:
                 pass  # 세마포어가 최대값에 도달했을 때 발생하는 예외 무시
             await asyncio.sleep(1 / self.TOKENS_PER_SECOND)
@@ -78,16 +126,48 @@ class APIFetcher:
             output_file_path: str
     ):
         await asyncio.sleep(delay)  # 작업 시작 지연
+
         async with aiofiles.open(output_file_path, "a") as file:
             while True:
                 request = await self.request_queue.get()
+
+                # 큐 크기 메트릭 업데이트
+                QUEUE_SIZE.labels(
+                    ipr_mode=self.ipr_mode,
+                    org_type=self.org_type
+                ).set(self.request_queue.qsize())
+
                 await self.token_bucket.acquire()  # 가용 토큰 발생까지 대기
+
+                # 활성 요청 메트릭 증가
+                ACTIVE_REQUESTS.labels(
+                    ipr_mode=self.ipr_mode,
+                    org_type=self.org_type
+                ).inc()
+
                 try:
+                    start_time = time.time() # 응답 시간 측정을 위해서 시작 시간 추가하기.
                     async with session.get(
                         url=request["url"],
                         params=request["params"],
                     ) as response:
+                        duration = time.time() - start_time 
+                        
+                        # 응답 시간 메트릭
+                        RESPONSE_TIME.labels(
+                            ipr_mode=self.ipr_mode,
+                            org_type=self.org_type
+                        ).observe(duration)
+
                         if response.status == 200:
+                            
+                            # 성공 카운터
+                            REQUEST_COUNTER.labels(
+                                ipr_mode=self.ipr_mode,
+                                org_type=self.org_type,
+                                status="success"
+                            ).inc()
+                            
                             try:
                                 xml_data = await response.text()
                                 json_data = xmltodict.parse(xml_data)
@@ -122,12 +202,31 @@ class APIFetcher:
                                     async with output_file_lock:
                                         await file.write(json.dumps(item, ensure_ascii=False) + ',\n')
                             except Exception as e:
+                                # 일반 에러 카운터 증가
+                                ERROR_COUNTER.labels(
+                                    ipr_mode=self.ipr_mode,
+                                    org_type=self.org_type,
+                                    error_type="parsing_error"
+                                ).inc()
+                                
                                 self.logger.error(f"XML 파싱 오류: {e}")
                                 json_data = {}
 
                         else:
+                            # HTTP 에러 카운터 증가
+                            ERROR_COUNTER.labels(
+                                ipr_mode=self.ipr_mode,
+                                org_type=self.org_type,
+                                error_type="http_error"
+                            ).inc()
                             response.raise_for_status()
                 finally:
+                    # 활성 요청 메트릭 감소
+                    ACTIVE_REQUESTS.labels(
+                        ipr_mode=self.ipr_mode,
+                        org_type=self.org_type
+                    ).dec()
+                    
                     self.request_queue.task_done()
                     if self.progress_bar:
                         self.progress_bar.update(1)
