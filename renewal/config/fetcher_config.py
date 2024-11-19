@@ -1,18 +1,18 @@
 TOKEN_BUCKET = {
-    'TOKENS_PER_SECOND': 30,
-    'MAX_TOKENS': 30,
+    'TOKENS_PER_SECOND': 20,
+    'MAX_TOKENS': 20,
 }
 
 WORKER = {
-    'WORKER_COUNT': 6,
+    'WORKER_COUNT': 20,
     'INTERVAL': 0.02,
 }
 
 AIOHTTP = {
-    'MAX_CONNECTIONS_LIMIT': 30,
+    'MAX_CONNECTIONS_LIMIT': 20,
 }
 
-# 메트릭 관련 설정 추가 
+# 메트릭 관련 설정 추가
 METRICS = {
     'ENABLED': True,
     'PREFIX': 'kipris_',  # 메트릭 이름 접두사
@@ -20,7 +20,7 @@ METRICS = {
         'patuti': 8000,
         'design': 8001,
         'trademark': 8002,
-        'applicant': 8003,
+        'applicant_no': 8003,
         'mock_server': 8004,
     },
     'LABELS': {  # 공통으로 사용할 레이블
