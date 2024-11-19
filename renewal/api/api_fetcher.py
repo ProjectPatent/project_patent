@@ -140,13 +140,13 @@ class APIFetcher:
                     ).inc()
 
                     try:
-                        start_time = time.time() # 응답 시간 측정을 위해서 시작 시간 추가하기.
+                        start_time = time.time()  # 응답 시간 측정을 위해서 시작 시간 추가하기.
                         async with session.get(
                             url=request["url"],
                             params=request["params"],
                         ) as response:
-                            duration = time.time() - start_time 
-                            
+                            duration = time.time() - start_time
+
                             # 응답 시간 메트릭
                             RESPONSE_TIME.labels(
                                 ipr_mode=self.ipr_mode,
@@ -154,22 +154,22 @@ class APIFetcher:
                             ).observe(duration)
 
                             if response.status == 200:
-                                
+
                                 # 성공 카운터
                                 REQUEST_COUNTER.labels(
                                     ipr_mode=self.ipr_mode,
                                     org_type=self.org_type,
                                     status="success"
                                 ).inc()
-                                
+
                                 try:
                                     xml_data = await response.text()
                                     json_data = xmltodict.parse(xml_data)
-                                    items = json_data.get('response', {}).get('body', {}).get('items', [])
+                                    items = json_data.get('response', {}).get(
+                                        'body', {}).get('items', [])
 
                                     if items is None:
                                         continue
-                                    
 
                                     # 페이지네이션 처리
                                     if self.ipr_mode != 'applicant_no':
@@ -185,7 +185,8 @@ class APIFetcher:
                                         items = json_data.get('response', {}).get(
                                             'body', {}).get('items', {}).get('item', [])
                                     else:
-                                        items = json_data.get('response', {}).get('body', {}).get('items', {}).get('corpBsApplicantInfo', [])
+                                        items = json_data.get('response', {}).get('body', {}).get(
+                                            'items', {}).get('corpBsApplicantInfo', [])
 
                                     # 'items'가 단일 element인 경우, list로 처리
                                     if isinstance(items, dict):
@@ -209,7 +210,7 @@ class APIFetcher:
                                         org_type=self.org_type,
                                         error_type="parsing_error"
                                     ).inc()
-                                    
+
                                     self.logger.error(f"XML 파싱 오류: {e}")
                                     json_data = {}
 
@@ -227,14 +228,15 @@ class APIFetcher:
                             ipr_mode=self.ipr_mode,
                             org_type=self.org_type
                         ).dec()
-                        
+
                         self.request_queue.task_done()
                         if self.progress_bar:
                             self.progress_bar.update(1)
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    self.logger.exception(f"Worker encountered an exception: {e}")
+                    self.logger.exception(
+                        f"Worker encountered an exception: {e}")
                     self.request_queue.task_done()
 
     async def start(self):
@@ -247,7 +249,7 @@ class APIFetcher:
         )
 
         # JSON 파일 초기화
-        output_file_path = f"./data/{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.json"
+        output_file_path = f"./raw_data/{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.json"
 
         # JSON metadata 초기화
         initial_json_data = {
@@ -285,12 +287,12 @@ class APIFetcher:
             # 진행 바 초기화
             if self.enable_progress_bar and self.progress_bar is None:
                 self.progress_bar = tqdm(
-                total=self.request_queue.qsize(),
-                desc=f"{self.org_type} {self.ipr_mode} Requests",
-                unit="req",
-                ascii=True,
-                ncols=128,
-            )
+                    total=self.request_queue.qsize(),
+                    desc=f"{self.org_type} {self.ipr_mode} Requests",
+                    unit="req",
+                    ascii=True,
+                    ncols=128,
+                )
 
             # 작업 큐의 모든 작업이 처리될 때까지 대기
             await self.request_queue.join()
