@@ -75,20 +75,13 @@ class APIFetcher:
 
         self.requests_list = requests_list
         self.request_queue = asyncio.Queue()
-        # self.is_request_queue_in_processing = True
-        self.paged_request_queue = asyncio.Queue()
         self.api_query_generator = APIQueryGenerator()
 
         # 메트릭 서버 시작
         start_http_server(METRICS['PORTS'][self.ipr_mode])
 
-        self.progress_bar = tqdm(
-            total=self.request_queue.qsize(),
-            desc="Requests",
-            unit="req",
-            ascii=True,
-            ncols=128,
-        ) if enable_progress_bar else None
+        self.enable_progress_bar = enable_progress_bar
+        self.progress_bar = None
         self.logger = logger.bind(
             org_type=self.org_type,
             ipr_mode=self.ipr_mode,
@@ -130,10 +123,6 @@ class APIFetcher:
         async with aiofiles.open(output_file_path, "a") as file:
             while True:
                 try:
-                    # if self.is_request_queue_in_processing:
-                    #     request = await self.request_queue.get()
-                    # else:
-                    #     request = await self.paged_request_queue.get()
                     request = await self.request_queue.get()
 
                     # 큐 크기 메트릭 업데이트
@@ -176,7 +165,6 @@ class APIFetcher:
                                 try:
                                     xml_data = await response.text()
                                     json_data = xmltodict.parse(xml_data)
-                                    print(json_data)
                                     items = json_data.get('response', {}).get('body', {}).get('items', [])
 
                                     if items is None:
@@ -190,7 +178,9 @@ class APIFetcher:
                                                 response_json=json_data, request=request)
                                             for paged_request in paged_requests_list:
                                                 await self.request_queue.put(paged_request)
-                                            print(paged_requests_list)
+                                                if self.progress_bar:
+                                                    self.progress_bar.total += 1
+                                                    self.progress_bar.refresh()
 
                                         items = json_data.get('response', {}).get(
                                             'body', {}).get('items', {}).get('item', [])
@@ -292,19 +282,27 @@ class APIFetcher:
             for request in self.requests_list:
                 await self.request_queue.put(request)
 
+            # 진행 바 초기화
+            if self.enable_progress_bar and self.progress_bar is None:
+                self.progress_bar = tqdm(
+                total=self.request_queue.qsize(),
+                desc=f"{self.org_type} {self.ipr_mode} Requests",
+                unit="req",
+                ascii=True,
+                ncols=128,
+            )
+
             # 작업 큐의 모든 작업이 처리될 때까지 대기
             await self.request_queue.join()
-            self.is_request_queue_in_processing = False
-            await self.paged_request_queue.join()
 
             # fetch_data tasks 취소
             for task in tasks:
                 task.cancel()
-
-            
 
             await asyncio.gather(*tasks, return_exceptions=True)
 
         # JSON 파일 종료
         async with aiofiles.open(output_file_path, "a") as file:
             await file.write('\n]}')
+        if self.progress_bar:
+            self.progress_bar.close()
