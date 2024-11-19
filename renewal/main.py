@@ -14,18 +14,21 @@ def main():
     api_query_generator = APIQueryGenerator()
 
     # asyncio.run(fetch_corp_applicant_no(api_query_generator=api_query_generator))
-    asyncio.run(fetch_ipr_data('univ', 'patuti', api_query_generator=api_query_generator))
+    asyncio.run(fetch_ipr_data('univ', 'design', api_query_generator=api_query_generator))
+
+    # requests_list = api_query_generator.generate_ipr_fetch_query('univ', 'trademark')
+    # requests_list = api_query_generator.generate_applicant_no_fetch_query()
+    # print(requests_list)
 
 async def fetch_corp_applicant_no(api_query_generator: APIQueryGenerator):
     requests_list = api_query_generator.generate_applicant_no_fetch_query()
-    print(len(requests_list))
-    api_fetcher = APIFetcher('corp', 'applicant_no', requests_list)
+    api_fetcher = APIFetcher('corp', 'applicant_no', requests_list[:5])
     await api_fetcher.start()
 
 async def fetch_ipr_data(org_type, ipr_mode, api_query_generator: APIQueryGenerator):
     requests_list = api_query_generator.generate_ipr_fetch_query(org_type, ipr_mode)
     # print(requests_list)
-    api_fetcher = APIFetcher(org_type, ipr_mode, requests_list)
+    api_fetcher = APIFetcher(org_type, ipr_mode, requests_list[:5])
     await api_fetcher.start()
 
 def send_slack_message(message):
@@ -41,8 +44,12 @@ def send_slack_message(message):
         print(f"메시지 전송 실패! 상태 코드: {response.status_code}, 응답: {response.text}")
 
 if __name__ == "__main__":
-    try:
-        send_slack_message("<!here> 사용 시작 : 프로젝트커")
+    is_actual_test = 0
+    if is_actual_test == 1:
+        try:
+            send_slack_message("<!here> 사용 시작 : 프로젝트커")
+            main()
+        finally:
+            send_slack_message("<!here> 사용 완료 : 프로젝트커")
+    else:
         main()
-    finally:
-        send_slack_message("<!here> 사용 완료 : 프로젝트커")

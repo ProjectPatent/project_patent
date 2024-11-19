@@ -69,6 +69,16 @@ class APIQueryGenerator:
             })
 
         return requests_list
+    
+    def _calulate_last_page(self, total_count, items_per_page):
+            last_page_no = 0
+            if total_count <= items_per_page:
+                last_page_no = 1
+            elif total_count % items_per_page > 0:
+                last_page_no = total_count // items_per_page + 1
+            else:
+                last_page_no = total_count // items_per_page
+            return last_page_no
 
     def generate_paged_fetch_query(self, response_json: dict, request: dict) -> list[dict]:
         requests_list = []
@@ -76,11 +86,11 @@ class APIQueryGenerator:
         params = request['params']
         items_per_page = params['numOfRows']
         total_count = int(response_json['response']['count']['totalCount'])
-        paged_params = params.copy()
-        last_page_range = range(2, (total_count // items_per_page) + 1 if (total_count % items_per_page) == 0 else (total_count // items_per_page) + 2)
+        last_page_range = range(2, self._calulate_last_page(total_count, items_per_page) + 1)
 
         if total_count > items_per_page:
             for page_no in last_page_range:
+                paged_params = params.copy()
                 paged_params['pageNo'] = page_no
                 requests_list.append({
                     'url': url,
