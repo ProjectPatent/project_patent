@@ -269,6 +269,12 @@ API_INPUT_PARAMS = {
     'applicant_no': {
         'CorporationNumber': 'true',
         'accessKey': KIPRIS_API_KEY,
+    },
+    'mock_server': {
+        'applicantName': 'true',
+        'pageNo': 'true',
+        'numOfRows': 'true',
+        'ServiceKey': KIPRIS_API_KEY,
     }
 }
 
@@ -357,9 +363,35 @@ API_PARAMS_TO_PARSE = {
         'applicant': 'AppicantName',
         'corp_no': 'CorportionNumber',
         'biz_no': 'BusinessRegistrationNumber',
-    }
+    },
+    'mock_server': {
+        'applicant_no': 'applicantNo',  # 특허고객번호
+        'title': 'title',  # 상표명
+        # '' : 'indexNo', # 인덱스 번호
+        'applicant': 'applicantName',  # 출원인명 / 특허고객번호 ##
+        'agent': 'agentName',  # 대리인
+        'appl_no': 'applicationNumber',  # 출원번호
+        'appl_date': 'applicationDate',  # 출원일자
+        # '' : 'regPrivilegeName', # 등록권자명 / 특허고객번호 ##
+        'reg_no': 'registrationNumber',  # 등록번호
+        'reg_date': 'registrationDate',  # 등록일자
+        'pub_no': 'publicationNumber',  # 공고번호
+        'pub_date': 'publicationDate',  # 공고일자
+        'legal_status_desc': 'applicationStatus',  # 출원상태
+        'img_url': 'drawing',  # 이미지경로
+        'priority_no': 'priorityNumber',  # 우선권 주장번호
+        'priority_date': 'priorityDate',  # 우선권 주장일자
+        # '' : 'fullText', # 전문존재유무
+        # '' : 'appReferenceNumber', # 출원참조번호
+        # '' : 'regReferenceNumber', # 등록참조번호
+        # '' : 'internationalRegisterNumber', # 국제등록번호
+        # '' : 'internationalRegisterDate', # 국제등록일자
+        # '' : 'registrationPublicNumber', # 등록공고번호
+        # '' : 'registrationPublicDate', # 등록공고일자
+        # '' : 'classifictionCode', # 상품분류코드
+        # '' : 'viennaCode', # 도형코드
+    },
 }
-
 
 # url
 API_URLS = {
@@ -367,10 +399,12 @@ API_URLS = {
     'patuti': 'http://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getAdvancedSearch',
     'design': 'http://plus.kipris.or.kr/kipo-api/kipi/designInfoSearchService/getAdvancedSearch',
     'trademark': 'http://plus.kipris.or.kr/kipo-api/kipi/trademarkInfoSearchService/getAdvancedSearch',
+    'mock_server': 'http://43.203.191.28:5000/mock_api'
 }
 
 API_ITEMS_PER_PAGE = {
     'patuti': 500,
     'design': 100,
     'trademark': 100,
+    'mock_server': 1,
 }
