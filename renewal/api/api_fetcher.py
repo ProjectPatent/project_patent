@@ -69,7 +69,7 @@ class APIFetcher:
         if self.org_type == 'invalid':
             raise ValueError(f"지원하지 않는 org_type: {org_type}")
         self.ipr_mode = ipr_mode if ipr_mode in [
-            'patuti', 'design', 'trademark', 'applicant_no'] else 'invalid'
+            'patuti', 'design', 'trademark', 'applicant_no', 'mock_server'] else 'invalid'
         if self.ipr_mode == 'invalid':
             raise ValueError(f"지원하지 않는 ipr_mode: {ipr_mode}")
 
@@ -87,8 +87,10 @@ class APIFetcher:
             ascii=True,
             ncols=128,
         ) if enable_progress_bar else None
-        self.logger = logger
-        self.logger.add(
+        self.logger = logger.bind(
+            org_type=self.org_type,
+            ipr_mode=self.ipr_mode,
+        ).add(
             f"{API_FETCHER_LOGGER['DIR_PATH']}{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.log",
             level=API_FETCHER_LOGGER['LEVEL'],
             format=API_FETCHER_LOGGER['FORMAT'],
@@ -96,10 +98,6 @@ class APIFetcher:
             rotation=API_FETCHER_LOGGER['ROTATION'],
             retention=API_FETCHER_LOGGER['RETENTION'],
             compression=API_FETCHER_LOGGER['COMPRESSION'],
-        )
-        self.logger.bind(
-            org_type=self.org_type,
-            ipr_mode=self.ipr_mode,
         )
         sys.excepthook = lambda exc_type, exc_value, exc_traceback: \
             self.logger.exception("Unhandled exception:", exc_info=(

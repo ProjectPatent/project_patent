@@ -17,9 +17,11 @@ METRICS = {
     'ENABLED': True,
     'PREFIX': 'kipris_',  # 메트릭 이름 접두사
     'PORTS': {
-        'patent': 8000,
+        'patuti': 8000,
         'design': 8001,
-        'trademark': 8002
+        'trademark': 8002,
+        'applicant': 8003,
+        'mock_server': 8004,
     },
     'LABELS': {  # 공통으로 사용할 레이블
         'service': 'kipris_api',

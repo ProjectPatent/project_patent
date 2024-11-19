@@ -18,7 +18,7 @@ class APIQueryGenerator:
         if org_type == 'invalid':
             raise ValueError(f"지원하지 않는 org_type: {org_type}")
         ipr_mode = ipr_mode if ipr_mode in [
-            'patuti', 'design', 'trademark'] else 'invalid'
+            'patuti', 'design', 'trademark', 'mock_server'] else 'invalid'
         if ipr_mode == 'invalid':
             raise ValueError(f"지원하지 않는 ipr_mode: {ipr_mode}")
 
