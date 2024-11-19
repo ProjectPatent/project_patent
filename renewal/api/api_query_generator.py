@@ -75,7 +75,7 @@ class APIQueryGenerator:
         url = request['url']
         params = request['params']
         items_per_page = params['numOfRows']
-        total_count = response_json['response']['count']['totalCount']
+        total_count = int(response_json['response']['count']['totalCount'])
         paged_params = params.copy()
         last_page_range = range(2, (total_count // items_per_page) + 1 if (total_count % items_per_page) == 0 else (total_count // items_per_page) + 2)
 
