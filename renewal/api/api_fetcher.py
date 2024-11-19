@@ -194,13 +194,16 @@ class APIFetcher:
                                     items = [items]
 
                                 # items별 applicantNo 값 추가
-                                for item in items:
+                                for idx in range(len(items)):
                                     if self.ipr_mode != 'applicant_no':
-                                        item['applicantNo'] = request["params"]["applicantName"]
+                                        if self.ipr_mode == 'patuti':
+                                            items[idx]['applicantNo'] = request["params"]["applicant"]
+                                        else:
+                                            items[idx]['applicantNo'] = request["params"]["applicantName"]
 
                                     # JSON 파일에 추가
                                     async with output_file_lock:
-                                        await file.write(json.dumps(item, ensure_ascii=False) + ',\n')
+                                        await file.write(json.dumps(items[idx], ensure_ascii=False) + ',\n')
                             except Exception as e:
                                 # 일반 에러 카운터 증가
                                 ERROR_COUNTER.labels(
