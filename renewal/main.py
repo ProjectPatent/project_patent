@@ -14,7 +14,12 @@ def main():
     api_query_generator = APIQueryGenerator()
 
     # asyncio.run(fetch_corp_applicant_no(api_query_generator=api_query_generator))
-    asyncio.run(fetch_ipr_data('univ', 'design', api_query_generator=api_query_generator))
+    asyncio.run(fetch_ipr_data('corp', 'patuti', api_query_generator=api_query_generator))
+    # asyncio.run(fetch_ipr_data('univ', 'patuti', api_query_generator=api_query_generator))
+    # asyncio.run(fetch_ipr_data('corp', 'design', api_query_generator=api_query_generator))
+    # asyncio.run(fetch_ipr_data('univ', 'design', api_query_generator=api_query_generator))
+    # asyncio.run(fetch_ipr_data('corp', 'trademark', api_query_generator=api_query_generator))
+    # asyncio.run(fetch_ipr_data('univ', 'trademark', api_query_generator=api_query_generator))
 
     # requests_list = api_query_generator.generate_ipr_fetch_query('univ', 'trademark')
     # requests_list = api_query_generator.generate_applicant_no_fetch_query()
@@ -44,8 +49,8 @@ def send_slack_message(message):
         print(f"메시지 전송 실패! 상태 코드: {response.status_code}, 응답: {response.text}")
 
 if __name__ == "__main__":
-    is_actual_test = 0
-    if is_actual_test == 1:
+    IS_ACTUAL_TEST = 0
+    if IS_ACTUAL_TEST == 1:
         try:
             send_slack_message("<!here> 사용 시작 : 프로젝트커")
             main()
