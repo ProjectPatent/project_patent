@@ -1,10 +1,7 @@
 import os
 
-from loguru import logger
-
 from db.mysql_loader import Database
 from config.api_config import API_URLS, API_INPUT_PARAMS, API_ITEMS_PER_PAGE
-from config.fetcher_config import API_FETCHER_LOGGER
 from utils.formatters import format_corporation_no
 
 
@@ -18,7 +15,7 @@ class APIQueryGenerator:
         if org_type == 'invalid':
             raise ValueError(f"지원하지 않는 org_type: {org_type}")
         ipr_mode = ipr_mode if ipr_mode in [
-            'patuti', 'design', 'trademark', 'mock_server'] else 'invalid'
+            'patuti', 'design', 'trademark'] else 'invalid'
         if ipr_mode == 'invalid':
             raise ValueError(f"지원하지 않는 ipr_mode: {ipr_mode}")
 
@@ -75,7 +72,7 @@ class APIQueryGenerator:
         url = request['url']
         params = request['params']
         items_per_page = params['numOfRows']
-        total_count = int(response_json['response']['count']['totalCount'])
+        total_count = response_json['response']['count']['totalCount']
         paged_params = params.copy()
         last_page_range = range(2, (total_count // items_per_page) + 1 if (total_count % items_per_page) == 0 else (total_count // items_per_page) + 2)
 
