@@ -284,8 +284,9 @@ key : 특허/실용신안, 디자인, 상표
 values : key : 300(400) 테이블 칼럼명
          values : api 출력값(파라미터)
 '''
+
 API_PARAMS_TO_PARSE = {
-    'patent_utility': {
+    'patuti': {
         'applicant_no': 'applicantNo',  # 특허고객번호
         'title': 'inventionTitle',  # 발명의 명칭(상표명, 디자인명)
         # '' : 'indexNo', # 일련번호
@@ -301,7 +302,8 @@ API_PARAMS_TO_PARSE = {
         'pub_date': 'publicationDate',  # 공고일자
         'legal_status_desc': 'registerStatus',  # 법적상태
         'img_url': 'drawing',  # 이미지경로
-        # 'abstract' : 'astrtCont', # 요약
+        'abstract': 'astrtCont',  # 요약
+        'ipr_code': 'applicationNumber',  # ipr 코드(특허고객번호 앞 2자리)
     },
     'design': {
         'applicant_no': 'applicantNo',  # 특허고객번호
@@ -330,6 +332,7 @@ API_PARAMS_TO_PARSE = {
         # '' : 'regReferenceNumber', # 등록참조번호
         # '' : 'internationalRegisterNumber', # 등록공고번호
         # '' : 'internationalRegisterDate', # 등록공고일자
+        # '' : 'imagePathLarge',
     },
     'trademark': {
         'applicant_no': 'applicantNo',  # 특허고객번호
@@ -357,6 +360,8 @@ API_PARAMS_TO_PARSE = {
         # '' : 'registrationPublicDate', # 등록공고일자
         # '' : 'classifictionCode', # 상품분류코드
         # '' : 'viennaCode', # 도형코드
+        # '' : 'bigDrawing',
+        # '' : 'classificationCode',
     },
     'applicant_no': {
         'applicant_no': 'ApplicantNumber',
@@ -396,15 +401,15 @@ API_PARAMS_TO_PARSE = {
 # url
 API_URLS = {
     'applicant_no': 'http://plus.kipris.or.kr/openapi/rest/CorpBsApplicantService/corpBsApplicantInfoV2',
-    'patuti': 'http://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getAdvancedSearch',
-    'design': 'http://plus.kipris.or.kr/kipo-api/kipi/designInfoSearchService/getAdvancedSearch',
-    'trademark': 'http://plus.kipris.or.kr/kipo-api/kipi/trademarkInfoSearchService/getAdvancedSearch',
+    'patuti': 'http://plus.kipris.or.kr/openapi/rest/patUtiModInfoSearchSevice/applicantNameSearchInfo',
+    'design': 'http://plus.kipris.or.kr/openapi/rest/designInfoSearchService/applicantNameSearchInfo',
+    'trademark': 'http://plus.kipris.or.kr/openapi/rest/trademarkInfoSearchService/applicantNamesearchInfo',
     'mock_server': 'http://43.203.191.28:5000/mock_api'
 }
 
 API_ITEMS_PER_PAGE = {
     'patuti': 500,
-    'design': 100,
-    'trademark': 100,
+    'design': 500,
+    'trademark': 500,
     'mock_server': 1,
 }
