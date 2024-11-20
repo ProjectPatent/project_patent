@@ -51,6 +51,10 @@ class DataParser():
              encoding='utf-8').write(json.dumps(self.ipc_cpc_data, ensure_ascii=False))
         open(f'{self.output_data_path}/priority_{self.date}_{org_type}_values.json', 'w',
              encoding='utf-8').write(json.dumps(self.priority_data, ensure_ascii=False))
+        
+        self.ipr_reg_data = {}
+        self.ipc_cpc_data = {}
+        self.priority_data = {}
 
     def ipr_reg_parser(self, org_type, ipr_mode):
         '''
@@ -62,21 +66,31 @@ class DataParser():
         '''
         path = f'{self.raw_data_path}/{ipr_mode}_{self.date}_{org_type}.json'
         ipr_data = None
-        with open(path, 'r', encoding='utf-8') as file:
-            json_data = json.load(file)
-            ipr_mode = json_data['metadata']['ipr_mode']
-            self.ipr_reg_data['table_name'] = TABLES[org_type.upper()
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                # 파일 내용을 문자열로 읽어서 정리
+                content = file.read().strip()
+                # 혹시 여러 JSON 객체가 있다면 마지막 쉼표나 추가 데이터 제거
+                if content.endswith(','):
+                    content = content[:-1]
+                json_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류 발생: {path}")
+            print(f"오류 위치: 라인 {e.lineno}, 컬럼 {e.colno}")
+            print(f"오류 메시지: {str(e)}")
+            raise
+        self.ipr_reg_data['table_name'] = TABLES[org_type.upper()
                                                      ]['IPR_REG'][0]
-            self.ipr_reg_data['values'] = []
-            for item in json_data['data']:
-                if item['applicationNumber'] is None:
-                    continue
-                if ipr_mode == 'patuti':
-                    ipr_data = self.ipc_cpc_parser(item, org_type, ipr_mode)
-                elif ipr_mode in ('design', 'trademark'):
-                    ipr_data = self.priority_parser(item, org_type, ipr_mode)
-                if ipr_data is not None:
-                    self.ipr_reg_data['values'].append(ipr_data)
+        self.ipr_reg_data['values'] = []
+        for item in json_data['data']:
+            if item['applicationNumber'] is None:
+                continue
+            if ipr_mode == 'patuti':
+                ipr_data = self.ipc_cpc_parser(item, org_type, ipr_mode)
+            elif ipr_mode in ('design', 'trademark'):
+                ipr_data = self.priority_parser(item, org_type, ipr_mode)
+            if ipr_data is not None:
+                self.ipr_reg_data['values'].append(ipr_data)
 
     def ipc_cpc_parser(self, item, org_type, ipr_mode):
         '''
@@ -159,3 +173,44 @@ class DataParser():
             self.priority_data['values'].append(priority_data)
 
         return ipr_data
+
+    def applicant_no_parser(self):
+        applicant_no_data = {}
+        
+        path = f'{self.raw_data_path}/applicant_no_{self.date}_corp.json'
+        json_data = None
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                # 파일 내용을 문자열로 읽어서 정리
+                content = file.read().strip()
+                # 혹시 여러 JSON 객체가 있다면 마지막 쉼표나 추가 데이터 제거
+                if content.endswith(','):
+                    content = content[:-1]
+                json_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류 발생: {path}")
+            print(f"오류 위치: 라인 {e.lineno}, 컬럼 {e.colno}")
+            print(f"오류 메시지: {str(e)}")
+            raise
+        
+        table_name = TABLES['CORP']['APPLICANT'][0]
+        table_columns = TABLES['CORP']['APPLICANT'][1]
+
+        applicant_no_data['table_name'] = table_name
+        applicant_no_data['values'] = []
+
+        for item in json_data['data']:
+            applicant_no = {}
+            for column in table_columns:
+                output_param = API_PARAMS_TO_PARSE['applicant_no'][column]
+                if column in API_PARAMS_TO_PARSE['applicant_no']:
+                    if column == 'biz_no' or column == 'corp_no':
+                        applicant_no[column] = item[output_param].replace('-', '') if item[output_param] else None
+                    else:
+                        applicant_no[column] = item[output_param] if item[output_param] else None
+                else:
+                    applicant_no[column] = None
+            applicant_no_data['values'].append(applicant_no)
+
+        open(f'{self.output_data_path}/applicant_no_{self.date}_corp_values.json', 'w',
+             encoding='utf-8').write(json.dumps(applicant_no_data, ensure_ascii=False))
