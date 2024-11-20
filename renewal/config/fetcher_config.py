@@ -22,6 +22,7 @@ METRICS = {
         'trademark': 8002,
         'applicant_no': 8003,
         'mock_server': 8004,
+        'db': 8005
     },
     'LABELS': {  # 공통으로 사용할 레이블
         'service': 'kipris_api',
