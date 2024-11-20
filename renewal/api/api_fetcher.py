@@ -84,7 +84,16 @@ class APIFetcher:
 
         self.requests_list = requests_list
         self.request_queue = asyncio.Queue()
+        self.is_first_item = True  # 첫 번째 아이템 여부 추적 플래그
         self.api_query_generator = APIQueryGenerator()
+        self.response_queue = asyncio.Queue()
+        self.initial_json_data = {
+            'metadata': {
+                'org_type': self.org_type,
+                'ipr_mode': self.ipr_mode,
+                'start_datetime': get_timestamp(),
+            },
+        }
 
         self.enable_progress_bar = enable_progress_bar
         self.progress_bar = None
@@ -121,85 +130,90 @@ class APIFetcher:
            self,
            session: aiohttp.ClientSession,
            delay: float,
-           output_file_lock: asyncio.Lock,
-           output_file_path: str
    ):
         # worker 시작시 active workers 증가 
         ACTIVE_WORKERS.inc()
         try:
             await asyncio.sleep(delay)  # 작업 시작 지연
+            
+            while True:
+                try:
+                    worker_start_time = time.time()
+                    request = await self.request_queue.get()
 
-            async with aiofiles.open(output_file_path, "a") as file:
-                while True:
+                    # 종료 신호(None)인 경우, 루프 종료
+                    if request is None:
+                        self.request_queue.task_done()
+                        break
+
+                    # 큐 크기 메트릭 업데이트
+                    QUEUE_SIZE.labels(
+                        ipr_mode=self.ipr_mode,
+                        org_type=self.org_type
+                    ).set(self.request_queue.qsize())
+
+                    await self.token_bucket.acquire()  # 가용 토큰 발생까지 대기
+                    
+                    # 활성 요청 메트릭 증가 
+                    ACTIVE_REQUESTS.labels(
+                        ipr_mode=self.ipr_mode,
+                        org_type=self.org_type
+                    ).inc()
+
                     try:
-                        worker_start_time = time.time()
-                        request = await self.request_queue.get()
+                        start_time = time.time()  # 응답 시간 측정을 위해서 시작 시간 추가하기.
+                        async with session.get(
+                            url=request["url"],
+                            params=request["params"],
+                            timeout=aiohttp.ClientTimeout(total=60)
+                        ) as response:
+                            duration = time.time() - start_time
 
-                        # 큐 크기 메트릭 업데이트
-                        QUEUE_SIZE.labels(
-                            ipr_mode=self.ipr_mode,
-                            org_type=self.org_type
-                        ).set(self.request_queue.qsize())
-
-                        await self.token_bucket.acquire()  # 가용 토큰 발생까지 대기
-                        
-                        # 활성 요청 메트릭 증가 
-                        ACTIVE_REQUESTS.labels(
-                            ipr_mode=self.ipr_mode,
-                            org_type=self.org_type
-                        ).inc()
-
-                        try:
-                            start_time = time.time()  # 응답 시간 측정을 위해서 시작 시간 추가하기.
-                            async with session.get(
-                                url=request["url"],
-                                params=request["params"],
-                            ) as response:
-                                duration = time.time() - start_time
-
-                                # 응답 시간 메트릭
-                                RESPONSE_TIME.labels(
+                            # 응답 시간 메트릭
+                            RESPONSE_TIME.labels(
+                                ipr_mode=self.ipr_mode,
+                                org_type=self.org_type
+                            ).observe(duration)
+                            if response.status == 200:
+                                # 성공 카운터
+                                REQUEST_COUNTER.labels(
                                     ipr_mode=self.ipr_mode,
-                                    org_type=self.org_type
-                                ).observe(duration)
-                                if response.status == 200:
-                                    # 성공 카운터
-                                    REQUEST_COUNTER.labels(
-                                        ipr_mode=self.ipr_mode,
-                                        org_type=self.org_type,
-                                        status="success"
-                                    ).inc()
+                                    org_type=self.org_type,
+                                    status="success"
+                                ).inc()
 
-                                    try:
-                                        xml_data = await response.text()
-                                        json_data = xmltodict.parse(xml_data)
+                                try:
+                                    xml_data = await response.text()
+                                    json_data = xmltodict.parse(xml_data)
+                                    items = json_data.get('response', {}).get(
+                                        'body', {}).get('items', [])
+
+                                    if items is None:
+                                        continue
+
+                                    # 페이지네이션 처리
+                                    if self.ipr_mode != 'applicant_no':
+                                        if int(json_data['response']['count']['pageNo']) == 1:
+                                            paged_requests_list = self.api_query_generator.generate_paged_fetch_query(
+                                                response_json=json_data, request=request)
+                                            for paged_request in paged_requests_list:
+                                                await self.request_queue.put(paged_request)
+                                                if self.progress_bar:
+                                                    self.progress_bar.total += 1
+                                                    self.progress_bar.refresh()
+
                                         items = json_data.get('response', {}).get(
-                                            'body', {}).get('items', [])
+                                            'body', {}).get('items', {}).get('item', [])
+                                    else:
+                                        items = json_data.get('response', {}).get('body', {}).get(
+                                            'items', {}).get('corpBsApplicantInfo', [])
 
-                                        if items is None:
-                                           continue
+                                    # 'items'가 단일 element인 경우, list로 처리  
+                                    if isinstance(items, dict):
+                                        items = [items]
 
-                                        # 페이지네이션 처리
-                                        if self.ipr_mode != 'applicant_no':
-                                            if int(json_data['response']['count']['pageNo']) == 1:
-                                                paged_requests_list = self.api_query_generator.generate_paged_fetch_query(
-                                                    response_json=json_data, request=request)
-                                                for paged_request in paged_requests_list:
-                                                    await self.request_queue.put(paged_request)
-                                                    if self.progress_bar:
-                                                        self.progress_bar.total += 1
-                                                        self.progress_bar.refresh()
-
-                                            items = json_data.get('response', {}).get(
-                                               'body', {}).get('items', {}).get('item', [])
-                                        else:
-                                            items = json_data.get('response', {}).get('body', {}).get(
-                                                'items', {}).get('corpBsApplicantInfo', [])
-
-                                        # 'items'가 단일 element인 경우, list로 처리  
-                                        if isinstance(items, dict):
-                                            items = [items]
-
+                                    # items가 None이 아닌 경우에만 처리
+                                    if items is not None:
                                         # items별 applicantNo 값 추가
                                         for idx in range(len(items)):
                                             if self.ipr_mode != 'applicant_no':
@@ -208,54 +222,70 @@ class APIFetcher:
                                                 else:
                                                     items[idx]['applicantNo'] = request["params"]["applicantName"]
 
-                                            # JSON 파일에 추가
-                                            async with output_file_lock:
-                                                # 마지막 데이터 여부 판단
-                                                is_last_item = self.request_queue.empty() and idx == len(items) - 1
-                                                json_entry = json.dumps(items[idx], ensure_ascii=False)
-                                                await file.write(json_entry)
-                                                if not is_last_item:
-                                                    await file.write(',\n')
-                                    except Exception as e:
-                                        # 일반 에러 카운터 증가
-                                        ERROR_COUNTER.labels(
-                                            ipr_mode=self.ipr_mode,
-                                            org_type=self.org_type,
-                                            error_type="parsing_error"
-                                        ).inc()
-                                        self.logger.error(f"XML 파싱 오류: {e}")
-                                        json_data = {}
-                                else:
-                                    # HTTP 에러 카운터 증가
+                                            await self.response_queue.put(items[idx])
+                                except Exception as e:
+                                    # 일반 에러 카운터 증가
                                     ERROR_COUNTER.labels(
                                         ipr_mode=self.ipr_mode,
                                         org_type=self.org_type,
-                                        error_type="http_error"
+                                        error_type="parsing_error"
                                     ).inc()
-                                    response.raise_for_status()
-                        finally:
-                            # 활성 요청 메트릭 감소
-                            ACTIVE_REQUESTS.labels(
-                               ipr_mode=self.ipr_mode,
-                               org_type=self.org_type
-                            ).dec()
+                                    self.logger.error(f"XML 파싱 오류: {e}")
+                                    json_data = {}
+                            else:
+                                # HTTP 에러 카운터 증가
+                                ERROR_COUNTER.labels(
+                                    ipr_mode=self.ipr_mode,
+                                    org_type=self.org_type,
+                                    error_type="http_error"
+                                ).inc()
+                                response.raise_for_status()
+                    finally:
+                        # 활성 요청 메트릭 감소
+                        ACTIVE_REQUESTS.labels(
+                            ipr_mode=self.ipr_mode,
+                            org_type=self.org_type
+                        ).dec()
 
-                            # Worker 처리 시간 측정 및 기록
-                            WORKER_PROCESS_TIME.observe(time.time() - worker_start_time)
+                        # Worker 처리 시간 측정 및 기록
+                        WORKER_PROCESS_TIME.observe(time.time() - worker_start_time)
 
-                            self.request_queue.task_done()
-                            if self.progress_bar:
-                                self.progress_bar.refresh()
-                                self.progress_bar.update(1)
-                    except asyncio.CancelledError:
-                        break
-                    except Exception as e:
-                        self.logger.exception(
-                            f"Worker encountered an exception: {e}")
                         self.request_queue.task_done()
+                        if self.progress_bar:
+                            self.progress_bar.refresh()
+                            self.progress_bar.update(1)
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    self.logger.exception(
+                        f"Worker encountered an exception: {e}")
+                    self.request_queue.task_done()
         finally:
             # worker 종료시 active workers 감소
             ACTIVE_WORKERS.dec()
+
+    async def _writer_coroutine(self, output_file_path: str):
+        async with aiofiles.open(output_file_path, "w") as file:
+            await file.write('{\n')
+            await file.write('"metadata": ' + json.dumps(self.initial_json_data["metadata"], ensure_ascii=False) + ',\n')
+            await file.write('"data": [\n')
+            first_item = True
+            while True:
+                item = await self.response_queue.get()
+                if item is None:
+                    # 종료 신호를 받으면 루프 종료
+                    break
+
+                if first_item:
+                    first_item = False
+                else:
+                    await file.write(',\n')
+
+                await file.write(json.dumps(item, ensure_ascii=False))
+                self.response_queue.task_done()
+
+            await file.write('\n]}')
+            await file.flush()
 
     async def start(self):
         for _ in range(self.MAX_TOKENS):
@@ -269,21 +299,10 @@ class APIFetcher:
         # JSON 파일 초기화
         output_file_path = f"/home/ubuntu/wooyeol/project_patent/renewal/raw_data/{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.json"
 
-        # JSON metadata 초기화
-        initial_json_data = {
-            'metadata': {
-                'org_type': self.org_type,
-                'ipr_mode': self.ipr_mode,
-                'start_datetime': get_timestamp(),
-            },
-        }
-        async with aiofiles.open(output_file_path, "w") as file:
-            await file.write('{\n')
-            await file.write('"metadata": ' + json.dumps(initial_json_data["metadata"], ensure_ascii=False) + ',\n')
-            await file.write('"data": [\n')
-
-        # 비동기 파일 쓰기 Lock 생성
-        output_file_lock = asyncio.Lock()
+        # JSON 쓰기 코루틴 실행
+        writer_task = asyncio.create_task(
+            self._writer_coroutine(output_file_path)
+        )
 
         async with aiohttp.ClientSession(connector=self.connector) as session:
             tasks = []
@@ -292,8 +311,6 @@ class APIFetcher:
                     self._fetch_and_save_worker(
                         session,
                         self.WORKER_INTERVAL * i,
-                        output_file_lock=output_file_lock,
-                        output_file_path=output_file_path,
                     )
                 )
                 tasks.append(task)
@@ -315,14 +332,15 @@ class APIFetcher:
             # 작업 큐의 모든 작업이 처리될 때까지 대기
             await self.request_queue.join()
 
-            # fetch_data tasks 취소
-            for task in tasks:
-                task.cancel()
+            # 작업 큐에 종료 신호(None) 추가하여 worker 종료
+            for _ in range(self.WORKER_COUNT):
+                await self.request_queue.put(None)
 
             await asyncio.gather(*tasks, return_exceptions=True)
 
-        # JSON 파일 종료
-        async with aiofiles.open(output_file_path, "a") as file:
-            await file.write('\n]}')
-        if self.progress_bar:
-            self.progress_bar.close()
+            await self.response_queue.put(None)
+
+            await writer_task
+
+            if self.progress_bar:
+                self.progress_bar.close()
