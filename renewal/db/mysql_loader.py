@@ -21,9 +21,8 @@ from tqdm import tqdm
 
 from config.api_config import TABLES
 from config.fetcher_config import METRICS  
-from prometheus_client import Counter, Summary, Gauge, start_http_server
+from prometheus_client import Counter, Summary, Gauge
 
-start_http_server(METRICS['PORTS']['db'])
 
 load_dotenv()
 

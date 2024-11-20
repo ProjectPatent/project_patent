@@ -9,8 +9,18 @@ load_dotenv()
 
 from api.api_query_generator import APIQueryGenerator
 from api.api_fetcher import APIFetcher
+from prometheus_client import start_http_server
 
 def main():
+    # 메트릭 서버들을 한 번에 시작
+    if METRICS['ENABLED']:
+        for service, port in METRICS['PORTS'].items():
+            try:
+                start_http_server(port)
+                print(f"Started metrics server for {service} on port {port}")
+            except Exception as e:
+                print(f"Failed to start metrics server on port {port}: {e}")
+
     api_query_generator = APIQueryGenerator()
 
     # asyncio.run(fetch_corp_applicant_no(api_query_generator=api_query_generator))

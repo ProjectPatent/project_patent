@@ -86,9 +86,6 @@ class APIFetcher:
         self.request_queue = asyncio.Queue()
         self.api_query_generator = APIQueryGenerator()
 
-        # 메트릭 서버 시작
-        start_http_server(METRICS['PORTS'][self.ipr_mode])
-
         self.enable_progress_bar = enable_progress_bar
         self.progress_bar = None
         self.logger = logger.bind(
