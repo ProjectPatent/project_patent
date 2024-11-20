@@ -84,6 +84,8 @@ class APIFetcher:
 
         self.requests_list = requests_list
         self.request_queue = asyncio.Queue()
+        self.is_first_item = True  # 첫 번째 아이템 여부 추적 플래그
+        self.first_item_lock = asyncio.Lock()  # 첫 번째 아이템 여부 추적 플래그를 위한 Lock 객체
         self.api_query_generator = APIQueryGenerator()
 
         self.enable_progress_bar = enable_progress_bar
@@ -208,14 +210,17 @@ class APIFetcher:
                                                 else:
                                                     items[idx]['applicantNo'] = request["params"]["applicantName"]
 
-                                            # JSON 파일에 추가
+                                            # 첫 번째 아이템인지 여부를 동기화된 상태에서 확인 및 업데이트
+                                            async with self.first_item_lock:
+                                                if self.is_first_item:
+                                                    self.is_first_item = False
+                                                    prefix = ''  # 첫 번째 아이템에는 쉼표 생략
+                                                else:
+                                                    prefix = ',\n'  # 이후 아이템에는 쉼표 추가
+
+                                            # 파일에 아이템 기록
                                             async with output_file_lock:
-                                                # 마지막 데이터 여부 판단
-                                                is_last_item = self.request_queue.empty() and idx == len(items) - 1
-                                                json_entry = json.dumps(items[idx], ensure_ascii=False)
-                                                await file.write(json_entry)
-                                                if not is_last_item:
-                                                    await file.write(',\n')
+                                                await file.write(prefix + json.dumps(items[idx], ensure_ascii=False))
                                     except Exception as e:
                                         # 일반 에러 카운터 증가
                                         ERROR_COUNTER.labels(
