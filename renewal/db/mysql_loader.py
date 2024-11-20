@@ -522,7 +522,12 @@ class Database:
             - org_type이 2인 경우 두 테이블의 데이터를 UNION으로 통합 조회
         """
         cursor = None
-        table_name = TABLES[org_type.upper()]['APPLICANT'][0]
+        if org_type in ['corp', 'univ']:
+            table_name = TABLES[org_type.upper()]['APPLICANT'][0]
+        elif org_type == 'all':
+            pass
+        else:
+            raise ValueError(f"지원하지 않는 org_type: {org_type}")
 
         try:
             self.connect()
@@ -540,7 +545,7 @@ class Database:
             else:
                 raise ValueError(f"지원하지 않는 org_type: {org_type}")
             rows = cursor.fetchall()
-            return [{str(applicant_no): str(biz_no)} for applicant_no, biz_no in rows]
+            return {str(applicant_no): str(biz_no) for applicant_no, biz_no in rows}
         except OperationalError as e:
             print(f"Error: {e}")
             return None

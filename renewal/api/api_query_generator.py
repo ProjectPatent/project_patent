@@ -28,7 +28,7 @@ class APIQueryGenerator:
         api_input_params = API_INPUT_PARAMS[ipr_mode]
 
         applicants = self.database_loader.get_applicant_biz_no(
-            org_type=org_type)
+            org_type=org_type).keys()
 
         for applicant in applicants:
             params = {}
