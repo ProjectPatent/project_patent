@@ -1,15 +1,15 @@
 TOKEN_BUCKET = {
-    'TOKENS_PER_SECOND': 10,
+    'TOKENS_PER_SECOND': 20,
     'MAX_TOKENS': 10,
 }
 
 WORKER = {
-    'WORKER_COUNT': 10,
-    'INTERVAL': 0.02,
+    'WORKER_COUNT': 5,
+    'INTERVAL': 0.11,
 }
 
 AIOHTTP = {
-    'MAX_CONNECTIONS_LIMIT': 10,
+    'MAX_CONNECTIONS_LIMIT': 5,
 }
 
 # 메트릭 관련 설정 추가

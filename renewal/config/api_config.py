@@ -401,9 +401,9 @@ API_PARAMS_TO_PARSE = {
 # url
 API_URLS = {
     'applicant_no': 'http://plus.kipris.or.kr/openapi/rest/CorpBsApplicantService/corpBsApplicantInfoV2',
-    'patuti': 'http://plus.kipris.or.kr/openapi/rest/patUtiModInfoSearchSevice/applicantNameSearchInfo',
-    'design': 'http://plus.kipris.or.kr/openapi/rest/designInfoSearchService/applicantNameSearchInfo',
-    'trademark': 'http://plus.kipris.or.kr/openapi/rest/trademarkInfoSearchService/applicantNamesearchInfo',
+    'patuti': 'http://plus.kipris.or.kr/kipo-api/kipi/patUtiModInfoSearchSevice/getAdvancedSearch',
+    'design': 'http://plus.kipris.or.kr/kipo-api/kipi/designInfoSearchService/getAdvancedSearch',
+    'trademark': 'http://plus.kipris.or.kr/kipo-api/kipi/trademarkInfoSearchService/getAdvancedSearch',
     'mock_server': 'http://43.203.191.28:5000/mock_api'
 }
 

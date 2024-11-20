@@ -64,8 +64,8 @@ class Database:
         환경 변수에서 데이터베이스 연결 정보를 가져와 인스턴스 변수로 설정합니다.
         """
         # 메트릭 서버 시작 추가
-        if METRICS['ENABLED']:
-            start_http_server(METRICS['PORTS']['db'])
+        # if METRICS['ENABLED']:
+        #     start_http_server(METRICS['PORTS']['db'])
 
         self.host = os.getenv("MYSQL_HOST", "localhost")
         self.user = os.getenv("MYSQL_USER")

@@ -133,7 +133,6 @@ class APIFetcher:
                 while True:
                     try:
                         worker_start_time = time.time()
-                       
                         request = await self.request_queue.get()
 
                         # 큐 크기 메트릭 업데이트
@@ -143,7 +142,7 @@ class APIFetcher:
                         ).set(self.request_queue.qsize())
 
                         await self.token_bucket.acquire()  # 가용 토큰 발생까지 대기
-
+                        
                         # 활성 요청 메트릭 증가 
                         ACTIVE_REQUESTS.labels(
                             ipr_mode=self.ipr_mode,
@@ -163,7 +162,6 @@ class APIFetcher:
                                     ipr_mode=self.ipr_mode,
                                     org_type=self.org_type
                                 ).observe(duration)
-
                                 if response.status == 200:
                                     # 성공 카운터
                                     REQUEST_COUNTER.labels(
@@ -175,7 +173,6 @@ class APIFetcher:
                                     try:
                                         xml_data = await response.text()
                                         json_data = xmltodict.parse(xml_data)
-                                        print(json_data)
                                         items = json_data.get('response', {}).get(
                                             'body', {}).get('items', [])
 
@@ -213,7 +210,12 @@ class APIFetcher:
 
                                             # JSON 파일에 추가
                                             async with output_file_lock:
-                                                await file.write(json.dumps(items[idx], ensure_ascii=False) + ',\n')
+                                                # 마지막 데이터 여부 판단
+                                                is_last_item = self.request_queue.empty() and idx == len(items) - 1
+                                                json_entry = json.dumps(items[idx], ensure_ascii=False)
+                                                await file.write(json_entry)
+                                                if not is_last_item:
+                                                    await file.write(',\n')
                                     except Exception as e:
                                         # 일반 에러 카운터 증가
                                         ERROR_COUNTER.labels(
@@ -221,7 +223,6 @@ class APIFetcher:
                                             org_type=self.org_type,
                                             error_type="parsing_error"
                                         ).inc()
-
                                         self.logger.error(f"XML 파싱 오류: {e}")
                                         json_data = {}
                                 else:
@@ -244,6 +245,7 @@ class APIFetcher:
 
                             self.request_queue.task_done()
                             if self.progress_bar:
+                                self.progress_bar.refresh()
                                 self.progress_bar.update(1)
                     except asyncio.CancelledError:
                         break
@@ -265,7 +267,7 @@ class APIFetcher:
         )
 
         # JSON 파일 초기화
-        output_file_path = f"./raw_data/{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.json"
+        output_file_path = f"/home/ubuntu/wooyeol/project_patent/renewal/raw_data/{self.ipr_mode}_{get_today_yyyymmdd()}_{self.org_type}.json"
 
         # JSON metadata 초기화
         initial_json_data = {

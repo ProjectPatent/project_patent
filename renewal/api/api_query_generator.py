@@ -97,4 +97,6 @@ class APIQueryGenerator:
                     'url': url,
                     'params': paged_params,
                 })
+        else:
+            requests_list = []
         return requests_list
