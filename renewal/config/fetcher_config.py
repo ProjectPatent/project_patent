@@ -1,15 +1,15 @@
 TOKEN_BUCKET = {
-    'TOKENS_PER_SECOND': 10,
+    'TOKENS_PER_SECOND': 20,
     'MAX_TOKENS': 10,
 }
 
 WORKER = {
-    'WORKER_COUNT': 10,
-    'INTERVAL': 0.02,
+    'WORKER_COUNT': 5,
+    'INTERVAL': 0.11,
 }
 
 AIOHTTP = {
-    'MAX_CONNECTIONS_LIMIT': 10,
+    'MAX_CONNECTIONS_LIMIT': 5,
 }
 
 # 메트릭 관련 설정 추가
@@ -22,6 +22,7 @@ METRICS = {
         'trademark': 8002,
         'applicant_no': 8003,
         'mock_server': 8004,
+        'db': 8005
     },
     'LABELS': {  # 공통으로 사용할 레이블
         'service': 'kipris_api',

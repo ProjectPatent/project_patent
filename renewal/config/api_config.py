@@ -81,7 +81,7 @@ TABLES = {
         'IPR_REG': [
             'tb24_300_corp_ipr_reg',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',
                 'biz_no',
                 'ipr_code',
@@ -114,10 +114,10 @@ TABLES = {
         'IPC_CPC': [
             'tb24_310_ipc_cpc',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
-                'ipc_seq',
+                # 'ipc_seq',
                 'ipc_cpc',
                 'ipc_cpc_code',
             ],
@@ -126,7 +126,7 @@ TABLES = {
             'tb24_320_priority',
             [
                 'priority_seq',
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
                 'priority_nation',
@@ -150,7 +150,7 @@ TABLES = {
         'IPR_REG': [
             'tb24_400_univ_ipr_reg',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',
                 'biz_no2',
                 'ipr_code',
@@ -183,10 +183,10 @@ TABLES = {
         'IPC_CPC': [
             'tb24_410_ipc_cpc',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
-                'ipc_seq',
+                # 'ipc_seq',
                 'ipc_cpc',
                 'ipc_cpc_code',
             ],
@@ -195,7 +195,7 @@ TABLES = {
             'tb24_420_priority',
             [
                 'priority_seq',
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
                 'priority_nation',
@@ -284,8 +284,9 @@ key : 특허/실용신안, 디자인, 상표
 values : key : 300(400) 테이블 칼럼명
          values : api 출력값(파라미터)
 '''
+
 API_PARAMS_TO_PARSE = {
-    'patent_utility': {
+    'patuti': {
         'applicant_no': 'applicantNo',  # 특허고객번호
         'title': 'inventionTitle',  # 발명의 명칭(상표명, 디자인명)
         # '' : 'indexNo', # 일련번호
@@ -301,7 +302,8 @@ API_PARAMS_TO_PARSE = {
         'pub_date': 'publicationDate',  # 공고일자
         'legal_status_desc': 'registerStatus',  # 법적상태
         'img_url': 'drawing',  # 이미지경로
-        # 'abstract' : 'astrtCont', # 요약
+        'abstract': 'astrtCont',  # 요약
+        'ipr_code': 'applicationNumber',  # ipr 코드(특허고객번호 앞 2자리)
     },
     'design': {
         'applicant_no': 'applicantNo',  # 특허고객번호
@@ -330,6 +332,7 @@ API_PARAMS_TO_PARSE = {
         # '' : 'regReferenceNumber', # 등록참조번호
         # '' : 'internationalRegisterNumber', # 등록공고번호
         # '' : 'internationalRegisterDate', # 등록공고일자
+        # '' : 'imagePathLarge',
     },
     'trademark': {
         'applicant_no': 'applicantNo',  # 특허고객번호
@@ -357,6 +360,8 @@ API_PARAMS_TO_PARSE = {
         # '' : 'registrationPublicDate', # 등록공고일자
         # '' : 'classifictionCode', # 상품분류코드
         # '' : 'viennaCode', # 도형코드
+        # '' : 'bigDrawing',
+        # '' : 'classificationCode',
     },
     'applicant_no': {
         'applicant_no': 'ApplicantNumber',
@@ -404,7 +409,7 @@ API_URLS = {
 
 API_ITEMS_PER_PAGE = {
     'patuti': 500,
-    'design': 100,
-    'trademark': 100,
+    'design': 500,
+    'trademark': 500,
     'mock_server': 1,
 }

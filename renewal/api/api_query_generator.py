@@ -23,12 +23,12 @@ class APIQueryGenerator:
             raise ValueError(f"지원하지 않는 ipr_mode: {ipr_mode}")
 
         requests_list = []
-        mysql_loader = Database()
         url = API_URLS[ipr_mode]
         items_per_page = API_ITEMS_PER_PAGE[ipr_mode]
         api_input_params = API_INPUT_PARAMS[ipr_mode]
 
-        applicants = mysql_loader.get_applicant_no(org_type=org_type)
+        applicants = self.database_loader.get_applicant_biz_no(
+            org_type=org_type).keys()
 
         for applicant in applicants:
             params = {}
@@ -69,16 +69,16 @@ class APIQueryGenerator:
             })
 
         return requests_list
-    
+
     def _calulate_last_page(self, total_count, items_per_page):
-            last_page_no = 0
-            if total_count <= items_per_page:
-                last_page_no = 1
-            elif total_count % items_per_page > 0:
-                last_page_no = total_count // items_per_page + 1
-            else:
-                last_page_no = total_count // items_per_page
-            return last_page_no
+        last_page_no = 0
+        if total_count <= items_per_page:
+            last_page_no = 1
+        elif total_count % items_per_page > 0:
+            last_page_no = total_count // items_per_page + 1
+        else:
+            last_page_no = total_count // items_per_page
+        return last_page_no
 
     def generate_paged_fetch_query(self, response_json: dict, request: dict) -> list[dict]:
         requests_list = []
@@ -86,7 +86,8 @@ class APIQueryGenerator:
         params = request['params']
         items_per_page = params['numOfRows']
         total_count = int(response_json['response']['count']['totalCount'])
-        last_page_range = range(2, self._calulate_last_page(total_count, items_per_page) + 1)
+        last_page_range = range(2, self._calulate_last_page(
+            total_count, items_per_page) + 1)
 
         if total_count > items_per_page:
             for page_no in last_page_range:
@@ -96,4 +97,6 @@ class APIQueryGenerator:
                     'url': url,
                     'params': paged_params,
                 })
+        else:
+            requests_list = []
         return requests_list

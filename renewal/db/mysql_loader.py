@@ -20,8 +20,9 @@ from MySQLdb import OperationalError, connect
 from tqdm import tqdm
 
 from config.api_config import TABLES
-from config.fetcher_config import METRICS  
+from config.fetcher_config import METRICS
 from prometheus_client import Counter, Summary, Gauge
+
 
 load_dotenv()
 
@@ -62,6 +63,10 @@ class Database:
 
         환경 변수에서 데이터베이스 연결 정보를 가져와 인스턴스 변수로 설정합니다.
         """
+        # 메트릭 서버 시작 추가
+        # if METRICS['ENABLED']:
+        #     start_http_server(METRICS['PORTS']['db'])
+
         self.host = os.getenv("MYSQL_HOST", "localhost")
         self.user = os.getenv("MYSQL_USER")
         self.password = os.getenv("MYSQL_PASSWORD")
@@ -447,7 +452,7 @@ class Database:
             cursor.execute(
                 f"SELECT biz_no FROM {TABLES['COMMON']['BIZ_INFO'][0]}")
             rows = cursor.fetchall()
-            
+
             result = []
             for row in rows:
                 if row[0]:
@@ -495,7 +500,7 @@ class Database:
                 cursor.close()
             self.close()
 
-    def get_applicant_no(self, org_type: str) -> list[str]:
+    def get_applicant_biz_no(self, org_type: str) -> list[str]:
         """기관 유형에 따른 출원인 번호 목록을 조회합니다.
 
         Args:
@@ -517,25 +522,30 @@ class Database:
             - org_type이 2인 경우 두 테이블의 데이터를 UNION으로 통합 조회
         """
         cursor = None
-        table_name = TABLES[org_type.upper()]['APPLICANT'][0]
+        if org_type in ['corp', 'univ']:
+            table_name = TABLES[org_type.upper()]['APPLICANT'][0]
+        elif org_type == 'all':
+            pass
+        else:
+            raise ValueError(f"지원하지 않는 org_type: {org_type}")
 
         try:
             self.connect()
             cursor = self.connection.cursor()
             if org_type in ['corp', 'univ']:
                 cursor.execute(
-                    f"SELECT applicant_no FROM {table_name}"
+                    f"SELECT applicant_no, biz_no FROM {table_name}"
                 )
             elif org_type == 'all':
                 cursor.execute(
-                    f"SELECT applicant_no FROM {TABLES['CORP']['APPLICANT'][0]} "
+                    f"SELECT applicant_no, biz_no FROM {TABLES['CORP']['APPLICANT'][0]} "
                     f"UNION "
-                    f"SELECT applicant_no FROM {TABLES['UNIV']['APPLICANT'][0]}"
+                    f"SELECT applicant_no, biz_no FROM {TABLES['UNIV']['APPLICANT'][0]}"
                 )
             else:
                 raise ValueError(f"지원하지 않는 org_type: {org_type}")
             rows = cursor.fetchall()
-            return list(row[0] for row in rows)
+            return {str(applicant_no): str(biz_no) for applicant_no, biz_no in rows}
         except OperationalError as e:
             print(f"Error: {e}")
             return None
@@ -560,6 +570,44 @@ class Database:
         except OperationalError as e:
             print(f"Error: {e}")
             return None
+        finally:
+            if cursor:
+                cursor.close()
+            self.close()
+
+    def get_db_stats(self):
+        """DB 통계 조회용 쿼리"""
+        cursor = None
+        try:
+            self.connect()
+            cursor = self.connection.cursor()
+
+            # 활성 연결 수 조회
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM information_schema.processlist 
+                WHERE db = %s
+            """, (self.db_name,))
+
+            # 실행 시간 통계
+            cursor.execute("""
+                SELECT operation_type, 
+                       AVG(execution_time) as avg_time,
+                       COUNT(*) as count 
+                FROM operation_logs 
+                GROUP BY operation_type
+            """)
+
+            # 에러 통계
+            cursor.execute("""
+                SELECT error_type,
+                       COUNT(*) as error_count
+                FROM error_logs
+                GROUP BY error_type 
+            """)
+
+            return cursor.fetchall()
+
         finally:
             if cursor:
                 cursor.close()
