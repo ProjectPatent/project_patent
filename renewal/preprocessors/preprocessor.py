@@ -62,7 +62,7 @@ class DataParser():
         ipr_data = None
         with open(path, 'r', encoding='utf-8') as file:
             json_data = json.load(file)
-            ipr_mode = json_data['ipr_mode']
+            ipr_mode = json_data['metadata']['ipr_mode']
             self.ipr_reg_data['table_name'] = TABLES[org_type.upper()
                                                      ]['IPR_REG'][0]
             self.ipr_reg_data['values'] = []
@@ -84,8 +84,8 @@ class DataParser():
 
         ipr_data = {}
         ipc_codes = []
-        table_name = TABLES[org_type.upper()]['IPC_CPC'][0]
-        table_columns = TABLES[org_type.upper()]['IPC_CPC'][1].keys()
+        table_name = TABLES[org_type.upper()]['IPR_REG'][0]
+        table_columns = TABLES[org_type.upper()]['IPR_REG'][1]
 
         self.ipc_cpc_data['table_name'] = table_name
         self.ipc_cpc_data['values'] = []
@@ -120,8 +120,8 @@ class DataParser():
 
         ipr_data = {}
         priority_data = {}
-        table_name = TABLES[org_type.upper()]['PRIORITY'][0]
-        table_columns = TABLES[org_type.upper()]['PRIORITY'][1].keys()
+        table_name = TABLES[org_type.upper()]['IPR_REG'][0]
+        table_columns = TABLES[org_type.upper()]['IPR_REG'][1]
 
         self.priority_data['table_name'] = table_name
         self.priority_data['values'] = []

@@ -81,7 +81,7 @@ TABLES = {
         'IPR_REG': [
             'tb24_300_corp_ipr_reg',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',
                 'biz_no',
                 'ipr_code',
@@ -114,10 +114,10 @@ TABLES = {
         'IPC_CPC': [
             'tb24_310_ipc_cpc',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
-                'ipc_seq',
+                # 'ipc_seq',
                 'ipc_cpc',
                 'ipc_cpc_code',
             ],
@@ -126,7 +126,7 @@ TABLES = {
             'tb24_320_priority',
             [
                 'priority_seq',
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
                 'priority_nation',
@@ -150,7 +150,7 @@ TABLES = {
         'IPR_REG': [
             'tb24_400_univ_ipr_reg',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',
                 'biz_no2',
                 'ipr_code',
@@ -183,10 +183,10 @@ TABLES = {
         'IPC_CPC': [
             'tb24_410_ipc_cpc',
             [
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
-                'ipc_seq',
+                # 'ipc_seq',
                 'ipc_cpc',
                 'ipc_cpc_code',
             ],
@@ -195,7 +195,7 @@ TABLES = {
             'tb24_420_priority',
             [
                 'priority_seq',
-                'ipr_seq',
+                # 'ipr_seq',
                 'applicant_no',  # 특허고객번호
                 'appl_no',  # 출원번호
                 'priority_nation',
