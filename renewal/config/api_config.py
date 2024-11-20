@@ -73,9 +73,9 @@ TABLES = {
                 'applicant',
                 'corp_no',
                 'biz_no',
-                'write_time',
-                'modify_time',
-                'ref_desc',
+                # 'write_time',
+                # 'modify_time',
+                # 'ref_desc',
             ],
         ],
         'IPR_REG': [
@@ -143,8 +143,8 @@ TABLES = {
                 'applicant',
                 'corp_no',
                 'biz_no',
-                'ref_desc',
-                'write_time',
+                # 'ref_desc',
+                # 'write_time',
             ],
         ],
         'IPR_REG': [
@@ -365,8 +365,8 @@ API_PARAMS_TO_PARSE = {
     },
     'applicant_no': {
         'applicant_no': 'ApplicantNumber',
-        'applicant': 'AppicantName',
-        'corp_no': 'CorportionNumber',
+        'applicant': 'ApplicantName',
+        'corp_no': 'CorporationNumber',
         'biz_no': 'BusinessRegistrationNumber',
     },
     'mock_server': {
