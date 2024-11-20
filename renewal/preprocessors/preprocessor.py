@@ -19,6 +19,8 @@ class DataParser():
         self.raw_data_path = raw_data_path
         self.output_data_path = output_data_path
         self.mysql_loader = Database()
+        self.biz_nos = self.mysql_loader.get_applicant_biz_no(
+            org_type='all')
 
         self.ipr_reg_data = {}
         self.ipc_cpc_data = {}
@@ -91,16 +93,19 @@ class DataParser():
         self.ipc_cpc_data['values'] = []
 
         for column in table_columns:
-            output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
-            if column == 'appl_no':
-                ipr_data[column] = item[output_param]
+            if column == 'biz_no':
+                ipr_data[column] = self.biz_nos[item['applicantNo']]
+                continue
             elif column == 'ipr_code':
-                ipr_data[column] = item[output_param][0:2]
-            elif column == 'main_ipc':
-                ipc_codes = item[output_param].split('|')
-                ipr_data[column] = ipc_codes[0]
+                ipr_data[column] = item['applicationNumber'][0:2]
+                continue
             elif column in API_PARAMS_TO_PARSE[ipr_mode]:
-                ipr_data[column] = item[output_param]
+                output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
+                if column == 'main_ipc':
+                    ipc_codes = item[output_param].split('|')
+                    ipr_data[column] = ipc_codes[0]
+                else:
+                    ipr_data[column] = item[output_param]
             else:
                 ipr_data[column] = None
         for ipc_code in ipc_codes:
@@ -127,12 +132,14 @@ class DataParser():
         self.priority_data['values'] = []
 
         for column in table_columns:
-            output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
-            if column == 'appl_no':
-                ipr_data[column] = item[output_param]
+            if column == 'biz_no':
+                ipr_data[column] = self.biz_nos[item['applicantNo']]
+                continue
             elif column == 'ipr_code':
-                ipr_data[column] = item[output_param][0:2]
+                ipr_data[column] = item['applicationNumber'][0:2]
+                continue
             elif column in API_PARAMS_TO_PARSE[ipr_mode]:
+                output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
                 ipr_data[column] = item[output_param]
             else:
                 ipr_data[column] = None
