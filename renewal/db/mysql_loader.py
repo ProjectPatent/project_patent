@@ -471,17 +471,17 @@ class Database:
                 cursor.close()
             self.close()
 
-    def get_ipr_seqs(self, org_type: int) -> dict[str, int]:
+    def get_ipr_seqs(self, org_type: str) -> dict[str, int]:
         cursor = None
         try:
             self.connect()
             cursor = self.connection.cursor()
-            if org_type == 0:
+            if org_type == 'corp':
                 cursor.execute(
-                    "SELECT appl_no, ipr_seq FROM tb24_300_corp_ipr_reg")
-            elif org_type == 1:
+                    f"SELECT appl_no, ipr_seq FROM {TABLES['CORP']['IPR_REG'][0]}")
+            elif org_type == 'univ':
                 cursor.execute(
-                    "SELECT appl_no, ipr_seq FROM tb24_400_univ_ipr_reg")
+                    f"SELECT appl_no, ipr_seq FROM {TABLES['UNIV']['IPR_REG'][0]}")
             rows = cursor.fetchall()
             return {str(appl_no): str(ipr_seq) for appl_no, ipr_seq in rows}
         except OperationalError as e:

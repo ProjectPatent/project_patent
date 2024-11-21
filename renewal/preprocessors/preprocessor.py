@@ -208,3 +208,29 @@ class DataParser():
 
         open(f'{self.output_data_path}/applicant_no_{self.date}_corp_values.json', 'w',
              encoding='utf-8').write(json.dumps(applicant_no_data, ensure_ascii=False))
+
+    def ipr_seq_parser(self, org_type):
+        path = f'{self.output_data_path}/ipc_cpc_{self.date}_{org_type}_values.json'
+        json_data = None
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+                if content.endswith(','):
+                    content = content[:-1]
+                json_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류 발생: {path}")
+            print(f"오류 위치: 라인 {e.lineno}, 컬럼 {e.colno}")
+            print(f"오류 메시지: {str(e)}")
+            raise
+
+        ipr_seqs = self.mysql_loader.get_ipr_seqs(org_type)
+
+        for idx, item in enumerate(json_data['values']):
+            if item['appl_no'] in ipr_seqs:
+                json_data['values'][idx]['ipr_seq'] = ipr_seqs[item['appl_no']]
+            else:
+                json_data['values'][idx]['ipr_seq'] = None
+
+        open(f'{self.output_data_path}/ipc_cpc_{self.date}_{org_type}_values.json', 'w',
+             encoding='utf-8').write(json.dumps(json_data, ensure_ascii=False))

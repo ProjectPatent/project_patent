@@ -152,7 +152,7 @@ TABLES = {
             [
                 # 'ipr_seq',
                 'applicant_no',
-                'biz_no2',
+                'biz_no',
                 'ipr_code',
                 'applicant',
                 'inventor',
