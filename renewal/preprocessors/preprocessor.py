@@ -40,6 +40,12 @@ class DataParser():
                 data_class : corp (기업)
                              univ (대학)
         '''
+        self.ipr_reg_data['table_name'] = TABLES[org_type.upper()]['IPR_REG'][0]
+        self.ipr_reg_data['values'] = []
+        self.ipc_cpc_data['table_name'] = TABLES[org_type.upper()]['IPC_CPC'][0]
+        self.ipc_cpc_data['values'] = []
+        self.priority_data['table_name'] = TABLES[org_type.upper()]['PRIORITY'][0]
+        self.priority_data['values'] = []
 
         self.ipr_reg_parser(org_type, ipr_mode='patuti')
         self.ipr_reg_parser(org_type, ipr_mode='design')
@@ -79,9 +85,7 @@ class DataParser():
             print(f"오류 위치: 라인 {e.lineno}, 컬럼 {e.colno}")
             print(f"오류 메시지: {str(e)}")
             raise
-        self.ipr_reg_data['table_name'] = TABLES[org_type.upper()
-                                                     ]['IPR_REG'][0]
-        self.ipr_reg_data['values'] = []
+
         for item in json_data['data']:
             if item['applicationNumber'] is None:
                 continue
@@ -103,16 +107,11 @@ class DataParser():
         table_name = TABLES[org_type.upper()]['IPR_REG'][0]
         table_columns = TABLES[org_type.upper()]['IPR_REG'][1]
 
-        self.ipc_cpc_data['table_name'] = table_name
-        self.ipc_cpc_data['values'] = []
-
         for column in table_columns:
             if column == 'biz_no':
                 ipr_data[column] = self.biz_nos[item['applicantNo']]
-                continue
             elif column == 'ipr_code':
                 ipr_data[column] = item['applicationNumber'][0:2]
-                continue
             elif column in API_PARAMS_TO_PARSE[ipr_mode]:
                 output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
                 if column == 'main_ipc':
@@ -142,16 +141,11 @@ class DataParser():
         table_name = TABLES[org_type.upper()]['IPR_REG'][0]
         table_columns = TABLES[org_type.upper()]['IPR_REG'][1]
 
-        self.priority_data['table_name'] = table_name
-        self.priority_data['values'] = []
-
         for column in table_columns:
             if column == 'biz_no':
                 ipr_data[column] = self.biz_nos[item['applicantNo']]
-                continue
             elif column == 'ipr_code':
                 ipr_data[column] = item['applicationNumber'][0:2]
-                continue
             elif column in API_PARAMS_TO_PARSE[ipr_mode]:
                 output_param = API_PARAMS_TO_PARSE[ipr_mode][column]
                 ipr_data[column] = item[output_param]
