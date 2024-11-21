@@ -14,6 +14,7 @@ mysql_loader 모듈
 import os
 import csv
 from datetime import datetime
+import json
 
 from dotenv import load_dotenv
 from MySQLdb import OperationalError, connect
@@ -240,160 +241,76 @@ class Database:
                 cursor.close()
             self.close()
 
-    def upsert_data(
-        self,
-        org_type: int,
-        service_type: int,
-        table_to_load: list[str, list[str]],
-        dataset: list[dict],
-        batch_size: int = 1000,
-        ipr_seqs: dict[str, int] = None,
-    ):
+    def upsert_data(self, json_file_path, batch_size=1000):
+        """JSON 파일에서 데이터를 읽어와 지정된 테이블에 업서트합니다.
+
+        Args:
+            json_file_path (str): 업서트할 데이터를 포함하는 JSON 파일의 경로.
+            batch_size (int, optional): 한 번에 처리할 배치 크기. 기본값은 1000.
+
+        Returns:
+            None
+
+        동작 방식:
+            1. JSON 파일을 로드하여 테이블 이름과 값을 추출합니다.
+            2. 컬럼 이름과 값을 동적으로 생성하여 SQL 쿼리를 만듭니다.
+            3. 배치 단위로 데이터를 업서트합니다.
+        """
         cursor = None
         try:
             self.connect()
             cursor = self.connection.cursor()
 
+            # JSON 파일 로드
+            with open(json_file_path, 'r', encoding='utf-8') as json_file:
+                data = json.load(json_file)
+
+            table_name = data["table_name"]
+            values_list = data["values"]
+
+            if not values_list:
+                print("업서트할 데이터가 없습니다.")
+                return
+
+            # 컬럼 이름 및 쿼리 동적 생성
+            columns = values_list[0].keys()
+            columns_list = ', '.join([f'`{col}`' for col in columns])
+            placeholders = ', '.join(['%s'] * len(columns))
+            update_assignments = ', '.join([f'`{col}` = VALUES(`{col}`)' for col in columns])
+
+            query = f"""
+            INSERT INTO `{table_name}` ({columns_list})
+            VALUES ({placeholders})
+            ON DUPLICATE KEY UPDATE {update_assignments};
+            """
+
             current_batch = []
-            query = None
             total_processed = 0
 
-            table_name = table_to_load[0]
-
-            # CSV 저장을 위한 디렉토리 생성
-            os.makedirs("./var", exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            batch_count = 0
-
-            desc_org_type = "기업" if org_type == 0 else "대학"
-            desc_service_type = (
-                "4권리"
-                if service_type == 0
-                else "IPC/CPC" if service_type == 1 else "우선권"
-            )
-
-            for data in tqdm(
-                dataset,
-                desc=f"{desc_org_type} {desc_service_type} 데이터 처리 중",
-                unit="rows",
-            ):
-                values = []
-                if service_type == 0:
-                    for value in data.values():
-                        values.append(value)
-                    query = f"""
-                    INSERT INTO {table_name} (
-                        applicant_no, title, applicant, main_ipc, appl_no, ipr_code, appl_date, open_no, 
-                        open_date, reg_no, reg_date, pub_no, pub_date, legal_status_desc, img_url, inventor, 
-                        agent, int_appl_no, int_appl_date, int_open_no, int_open_date, exam_flag, exam_date, 
-                        claim_cnt, abstract, biz_no
-                        ) 
-                        VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                            %s, %s, %s, %s, %s, %s
-                        ) 
-                        ON DUPLICATE KEY UPDATE 
-                            title = VALUES(title),
-                            applicant = VALUES(applicant),
-                            main_ipc = VALUES(main_ipc),
-                            ipr_code = VALUES(ipr_code),
-                            appl_date = VALUES(appl_date),
-                            open_no = VALUES(open_no),
-                            open_date = VALUES(open_date),
-                            reg_no = VALUES(reg_no),
-                            reg_date = VALUES(reg_date),
-                            pub_no = VALUES(pub_no),
-                            pub_date = VALUES(pub_date),
-                            int_appl_no = VALUES(int_appl_no),
-                            int_appl_date = VALUES(int_appl_date),
-                            int_open_no = VALUES(int_open_no),
-                            int_open_date = VALUES(int_open_date),
-                            legal_status_desc = CASE 
-                                WHEN legal_status_desc != VALUES(legal_status_desc) 
-                                THEN VALUES(legal_status_desc) 
-                                ELSE legal_status_desc 
-                                END,
-                            exam_flag = VALUES(exam_flag),
-                            exam_date = VALUES(exam_date),
-                            claim_cnt = VALUES(claim_cnt),
-                            abstract = VALUES(abstract),
-                            biz_no = VALUES(biz_no),
-                            img_url = VALUES(img_url),
-                            inventor = VALUES(inventor),
-                            agent = VALUES(agent);
-                    """
-
-                elif service_type == 1:
-                    for value in data.values():
-                        values.append(value)
-                    # values.append(ipr_seqs[data['appl_no']])
-                    values.append(None)
-                    ipr_table = (
-                        "tb24_300_corp_ipr_reg"
-                        if org_type == 0
-                        else "tb24_400_univ_ipr_reg"
-                    )
-
-                    # VALUES (%s, %s, %s, (SELECT ipr_seq FROM {ipr_table} WHERE appl_no = %s))
-                    query = f"""
-                    INSERT INTO {table_name} (appl_no, ipc_cpc, ipc_cpc_code, ipr_seq)
-                    VALUES (%s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                        ipr_seq = VALUES(ipr_seq),
-                        appl_no = VALUES(appl_no),
-                        ipc_cpc = VALUES(ipc_cpc),
-                        ipc_cpc_code = VALUES(ipc_cpc_code)
-                    """
-
-                elif service_type == 2:
-                    for value in data.values():
-                        values.append(value)
-                    values.append(ipr_seqs[data["appl_no"]])
-                    values.pop(-2)
-
-                    # VALUES (%s, %s, %s, (SELECT ipr_seq FROM {ipr_table} WHERE appl_no = %s))
-                    query = f"""
-                    INSERT INTO {table_name} (applicant_no, priority_date, priority_no, ipr_seq)
-                    VALUES (%s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                        applicant_no = VALUES(applicant_no),
-                        priority_no = VALUES(priority_no),
-                        priority_date = VALUES(priority_date),
-                        ipr_seq = VALUES(ipr_seq)
-                    """
-
-                current_batch.append(tuple(values))
+            for data_dict in tqdm(values_list, desc=f"{table_name} 테이블에 업서트 중", unit="rows"):
+                values = tuple(data_dict.get(col) for col in columns)
+                current_batch.append(values)
 
                 if len(current_batch) >= batch_size:
-                    # CSV 파일로 현재 배치 저장
-                    batch_count += 1
-                    # csv_filename = f'./var/batch_{timestamp}_{batch_count}.csv'
-                    # with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                    #     writer = csv.writer(f)
-                    #     writer.writerows(current_batch)
-
                     cursor.executemany(query, current_batch)
                     self.connection.commit()
                     total_processed += len(current_batch)
-                    # print(f"{total_processed} rows processed - Saved to {csv_filename}")
-
                     current_batch = []
 
             if current_batch:
-                # 마지막 배치 저장
-                batch_count += 1
-                # csv_filename = f'./var/batch_{timestamp}_{batch_count}.csv'
-                # with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                #     writer = csv.writer(f)
-                #     writer.writerows(current_batch)
-
                 cursor.executemany(query, current_batch)
                 self.connection.commit()
                 total_processed += len(current_batch)
-                # print(f"Total {total_processed} rows processed - Final batch saved to {csv_filename}")
+
+            print(f"총 {total_processed}개의 행이 {table_name} 테이블에 업서트되었습니다.")
 
         except OperationalError as e:
-            print(f"Error: {e}")
+            print(f"데이터베이스 오류: {e}")
+            self.connection.rollback()
+        except json.JSONDecodeError as e:
+            print(f"JSON 파싱 오류: {e}")
+        except Exception as e:
+            print(f"알 수 없는 오류 발생: {e}")
             self.connection.rollback()
         finally:
             if cursor:
@@ -566,7 +483,7 @@ class Database:
                 cursor.execute(
                     "SELECT appl_no, ipr_seq FROM tb24_400_univ_ipr_reg")
             rows = cursor.fetchall()
-            return dict(rows)
+            return {str(appl_no): str(ipr_seq) for appl_no, ipr_seq in rows}
         except OperationalError as e:
             print(f"Error: {e}")
             return None
