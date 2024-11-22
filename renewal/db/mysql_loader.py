@@ -254,7 +254,8 @@ class Database:
         동작 방식:
             1. JSON 파일을 로드하여 테이블 이름과 값을 추출합니다.
             2. 컬럼 이름과 값을 동적으로 생성하여 SQL 쿼리를 만듭니다.
-            3. 배치 단위로 데이터를 업서트합니다.
+            3. 제외할 컬럼을 설정하고, 이를 제외한 컬럼으로 UPDATE 절을 생성합니다.
+            4. 배치 단위로 데이터를 업서트합니다.
         """
         cursor = None
         try:
@@ -272,11 +273,17 @@ class Database:
                 print("업서트할 데이터가 없습니다.")
                 return
 
+            # 해당 테이블의 제외할 컬럼 목록 가져오기
+            exclude_columns = self.get_exclude_columns(table_name)
+
             # 컬럼 이름 및 쿼리 동적 생성
             columns = values_list[0].keys()
             columns_list = ', '.join([f'`{col}`' for col in columns])
             placeholders = ', '.join(['%s'] * len(columns))
-            update_assignments = ', '.join([f'`{col}` = VALUES(`{col}`)' for col in columns])
+
+            # 제외할 컬럼을 제외한 업데이트 대상 컬럼 목록 생성
+            update_columns = [col for col in columns if col not in exclude_columns]
+            update_assignments = ', '.join([f'`{col}` = VALUES(`{col}`)' for col in update_columns])
 
             query = f"""
             INSERT INTO `{table_name}` ({columns_list})
@@ -316,6 +323,26 @@ class Database:
             if cursor:
                 cursor.close()
             self.close()
+
+    def get_exclude_columns(self, table_name):
+        """지정된 테이블의 제외할 컬럼 목록을 반환합니다.
+
+        Args:
+            table_name (str): 테이블 이름.
+
+        Returns:
+            exclude_columns (list): 제외할 컬럼 이름의 리스트.
+        """
+        exclude_columns = []
+
+        # TABLES 상수에서 테이블 이름으로 제외할 컬럼 목록 찾기
+        for category in TABLES.values():
+            for table_info in category.values():
+                if table_info[0] == table_name:
+                    if len(table_info) > 2 and isinstance(table_info[2], list):
+                        exclude_columns = table_info[2]
+                    break  # 테이블을 찾았으므로 더 이상 탐색할 필요 없음
+        return exclude_columns
 
     def fetch_corp_no(self) -> list[str]:
         """

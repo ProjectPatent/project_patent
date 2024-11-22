@@ -43,10 +43,11 @@ def main():
     # time.sleep(3)
     # asyncio.run(fetch_ipr_data('univ', 'trademark', api_query_generator=api_query_generator))
 
+    ipr_data_parser.applicant_no_parser()
+    mysql_loader.upsert_data(json_file_path='/home/ubuntu/wooyeol/project_patent/renewal/db_dataset/applicant_no_20241121_corp_values.json')
     ipr_data_parser.json_to_query_values(org_type='corp')
     ipr_data_parser.json_to_query_values(org_type='univ')
 
-    mysql_loader.upsert_data(json_file_path='/home/ubuntu/wooyeol/project_patent/renewal/db_dataset/applicant_no_20241120_corp_values.json')
     mysql_loader.upsert_data(json_file_path='/home/ubuntu/wooyeol/project_patent/renewal/db_dataset/ipr_reg_20241121_corp_values.json')
     mysql_loader.upsert_data(json_file_path='/home/ubuntu/wooyeol/project_patent/renewal/db_dataset/ipr_reg_20241121_univ_values.json')
     ipr_data_parser.ipr_seq_parser(org_type='corp')
