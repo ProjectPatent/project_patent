@@ -77,6 +77,9 @@ TABLES = {
                 # 'modify_time',
                 # 'ref_desc',
             ],
+            [
+                'applicant_no',
+            ],
         ],
         'IPR_REG': [
             'tb24_300_corp_ipr_reg',
@@ -110,6 +113,10 @@ TABLES = {
                 'survey_year',
                 'survey_month',
             ],
+            [
+                'appl_no',
+                'applicant_no',
+            ],
         ],
         'IPC_CPC': [
             'tb24_310_ipc_cpc',
@@ -119,6 +126,11 @@ TABLES = {
                 'appl_no',  # 출원번호
                 # 'ipc_seq',
                 'ipc_cpc',
+                'ipc_cpc_code',
+            ],
+            [
+                'appl_no',
+                'applicant_no',
                 'ipc_cpc_code',
             ],
         ],
@@ -145,6 +157,9 @@ TABLES = {
                 'biz_no',
                 # 'ref_desc',
                 # 'write_time',
+            ],
+            [
+                'applicant_no',
             ],
         ],
         'IPR_REG': [
@@ -179,6 +194,10 @@ TABLES = {
                 'survey_year',
                 'survey_month',
             ],
+            [
+                'appl_no',
+                'applicant_no',
+            ],
         ],
         'IPC_CPC': [
             'tb24_410_ipc_cpc',
@@ -188,6 +207,11 @@ TABLES = {
                 'appl_no',  # 출원번호
                 # 'ipc_seq',
                 'ipc_cpc',
+                'ipc_cpc_code',
+            ],
+            [
+                'appl_no',
+                'applicant_no',
                 'ipc_cpc_code',
             ],
         ],
@@ -201,6 +225,10 @@ TABLES = {
                 'priority_nation',
                 'priority_no',
                 'priority_date',
+            ],
+            [
+                'appl_no',
+                'applicant_no',
             ],
         ],
     }

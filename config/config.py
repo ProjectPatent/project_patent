@@ -124,7 +124,7 @@ tables = {
     'TB_400' : ['tb24_400_univ_ipr_reg', [
         'ipr_seq',
         'applicant_no',
-        'biz_no2',
+        'biz_no',
         'ipr_code',
         'applicant',
         'inventor',
